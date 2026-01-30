@@ -14,13 +14,6 @@ export function formatCurrency(value: number, decimals = 2): string {
   }).format(value);
 }
 
-export function formatNumber(value: number, decimals = 2): string {
-  return new Intl.NumberFormat("en-US", {
-    minimumFractionDigits: decimals,
-    maximumFractionDigits: decimals,
-  }).format(value);
-}
-
 export function formatPercentage(value: number, decimals = 2): string {
   return `${value >= 0 ? "+" : ""}${value.toFixed(decimals)}%`;
 }
@@ -39,12 +32,4 @@ export function formatDuration(ms: number): string {
 
 export function shortenAddress(address: string, chars = 4): string {
   return `${address.slice(0, chars)}...${address.slice(-chars)}`;
-}
-
-export function getTimestamp(date: Date = new Date()): number {
-  return Math.floor(date.getTime() / 1000);
-}
-
-export function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
 }

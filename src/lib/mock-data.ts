@@ -17,7 +17,6 @@ const SYMBOLS = ["SOL/USDC", "BTC/USDC", "ETH/USDC", "RAY/USDC", "BONK/USDC"];
 const MARKET_TYPES: MarketType[] = ["spot", "perpetual"];
 const SIDES: TradeSide[] = ["long", "short"];
 const ORDER_TYPES: OrderType[] = ["market", "limit"];
-// const STATUSES: TradeStatus[] = ["closed", "open"];
 
 function randomFloat(min: number, max: number): number {
   return Math.random() * (max - min) + min;
