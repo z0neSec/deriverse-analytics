@@ -1,26 +1,17 @@
 "use client";
 
-import React, { useEffect, useMemo } from "react";
+import React, { useMemo } from "react";
 import { useTradingStore } from "@/store";
-import { Card, CardHeader, CardTitle, CardContent, StatCard } from "@/components/ui";
+import { Card, CardHeader, CardTitle, CardContent, StatCard, EmptyState } from "@/components/ui";
 import { FeeChart } from "@/components/charts";
 import { FilterBar } from "@/components/dashboard";
-import { generateMockTrades } from "@/lib/mock-data";
 import { calculateFeeBreakdown, filterTrades } from "@/lib/analytics";
 import { formatCurrency, toDate } from "@/lib/utils";
 import { format } from "date-fns";
 import { Activity, TrendingDown, Percent, DollarSign } from "lucide-react";
 
 export default function FeesPage() {
-  const { trades, setTrades, filters } = useTradingStore();
-
-  // Initialize mock data if needed
-  useEffect(() => {
-    if (trades.length === 0) {
-      const mockTrades = generateMockTrades(150);
-      setTrades(mockTrades);
-    }
-  }, [trades.length, setTrades]);
+  const { trades, filters } = useTradingStore();
 
   const filteredTrades = useMemo(() => filterTrades(trades, filters), [trades, filters]);
   const feeBreakdown = useMemo(() => calculateFeeBreakdown(filteredTrades), [filteredTrades]);
@@ -67,26 +58,34 @@ export default function FeesPage() {
       {/* Filter Bar */}
       <FilterBar />
 
-      {/* Key Fee Metrics */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <StatCard
-          title="Total Fees Paid"
-          value={formatCurrency(feeBreakdown.totalFees)}
-          icon={<Activity className="w-6 h-6" />}
-          valueClassName="text-amber-400"
+      {/* Show empty state if no trades */}
+      {trades.length === 0 ? (
+        <EmptyState 
+          title="No Fee Data"
+          description="Connect your wallet to view your fee analysis"
         />
-        <StatCard
-          title="Fee Rate"
-          value={`${feePercentage.toFixed(3)}%`}
-          subtitle="of total volume"
-          icon={<Percent className="w-6 h-6" />}
-        />
-        <StatCard
-          title="Avg Daily Fees"
-          value={formatCurrency(avgDailyFees)}
-          icon={<DollarSign className="w-6 h-6" />}
-        />
-        <StatCard
+      ) : (
+        <>
+          {/* Key Fee Metrics */}
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <StatCard
+              title="Total Fees Paid"
+              value={formatCurrency(feeBreakdown.totalFees)}
+              icon={<Activity className="w-6 h-6" />}
+              valueClassName="text-amber-400"
+            />
+            <StatCard
+              title="Fee Rate"
+              value={`${feePercentage.toFixed(3)}%`}
+              subtitle="of total volume"
+              icon={<Percent className="w-6 h-6" />}
+            />
+            <StatCard
+              title="Avg Daily Fees"
+              value={formatCurrency(avgDailyFees)}
+              icon={<DollarSign className="w-6 h-6" />}
+            />
+            <StatCard
           title="Maker Rebates Earned"
           value={formatCurrency(feeBreakdown.makerFees * 0.3)}
           subtitle="~30% rebate estimate"
@@ -276,6 +275,8 @@ export default function FeesPage() {
           </div>
         </CardContent>
       </Card>
+        </>
+      )}
     </div>
   );
 }

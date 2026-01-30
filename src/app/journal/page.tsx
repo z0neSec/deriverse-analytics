@@ -1,9 +1,8 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { useTradingStore } from "@/store";
 import { Card, CardHeader, CardTitle, CardContent, Button, Badge, Input, Textarea } from "@/components/ui";
-import { generateMockJournalEntries } from "@/lib/mock-data";
 import { format } from "date-fns";
 import { Plus, Edit2, Trash2, Tag, Calendar, BookOpen, Smile, Meh, Frown } from "lucide-react";
 import type { JournalEntry } from "@/types";
@@ -20,14 +19,6 @@ export default function JournalPage() {
     mood: "neutral" as "positive" | "neutral" | "negative",
     lessonLearned: "",
   });
-
-  // Initialize mock journal entries if empty
-  useEffect(() => {
-    if (journalEntries.length === 0) {
-      const mockEntries = generateMockJournalEntries();
-      mockEntries.forEach((entry) => addJournalEntry(entry));
-    }
-  }, [journalEntries.length, addJournalEntry]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();

@@ -1,8 +1,8 @@
 "use client";
 
-import React, { useEffect, useMemo } from "react";
+import React, { useMemo } from "react";
 import { useTradingStore } from "@/store";
-import { Card, CardHeader, CardTitle, CardContent, CardDescription, StatCard } from "@/components/ui";
+import { Card, CardHeader, CardTitle, CardContent, CardDescription, StatCard, Button, EmptyState } from "@/components/ui";
 import {
   PnLChart,
   DrawdownChart,
@@ -10,14 +10,15 @@ import {
   LongShortRatioChart,
 } from "@/components/charts";
 import { FilterBar, SymbolPerformance } from "@/components/dashboard";
-import { generateMockTrades, generateDailyPerformance } from "@/lib/mock-data";
 import {
   calculatePortfolioMetrics,
   calculateTimeBasedMetrics,
   calculateSymbolMetrics,
   filterTrades,
+  generateDailyPerformance,
 } from "@/lib/analytics";
 import { formatCurrency, formatPercentage, toDate } from "@/lib/utils";
+import { exportAnalyticsToCSV, exportToPDF } from "@/lib/export";
 import { format } from "date-fns";
 import {
   BarChart,
@@ -35,17 +36,10 @@ import {
   Radar,
   Legend,
 } from "recharts";
+import { Download, FileText } from "lucide-react";
 
 export default function AnalyticsPage() {
-  const { trades, setTrades, filters } = useTradingStore();
-
-  // Initialize mock data if needed
-  useEffect(() => {
-    if (trades.length === 0) {
-      const mockTrades = generateMockTrades(150);
-      setTrades(mockTrades);
-    }
-  }, [trades.length, setTrades]);
+  const { trades, filters } = useTradingStore();
 
   const filteredTrades = useMemo(() => filterTrades(trades, filters), [trades, filters]);
   const metrics = useMemo(() => calculatePortfolioMetrics(filteredTrades), [filteredTrades]);
@@ -128,52 +122,90 @@ export default function AnalyticsPage() {
     },
   ];
 
+  const handleExportCSV = () => {
+    exportAnalyticsToCSV(metrics, symbolMetrics, `analytics-${new Date().toISOString().split('T')[0]}.csv`);
+  };
+
+  const handleExportPDF = () => {
+    exportToPDF(filteredTrades, metrics, symbolMetrics);
+  };
+
   return (
     <div className="space-y-6">
       {/* Page Header */}
-      <div>
-        <h1 className="text-2xl font-bold text-white">Advanced Analytics</h1>
-        <p className="text-zinc-400 mt-1">
-          Deep insights and advanced metrics for your trading performance
-        </p>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-white">Advanced Analytics</h1>
+          <p className="text-zinc-400 mt-1">
+            Deep insights and advanced metrics for your trading performance
+          </p>
+        </div>
+        <div className="flex gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleExportCSV}
+            className="gap-2"
+          >
+            <Download className="w-4 h-4" />
+            Export CSV
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleExportPDF}
+            className="gap-2"
+          >
+            <FileText className="w-4 h-4" />
+            Export PDF
+          </Button>
+        </div>
       </div>
 
       {/* Filter Bar */}
       <FilterBar />
 
-      {/* Performance Overview Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard
-          title="Total PnL"
-          value={formatCurrency(metrics.totalPnl)}
-          trend={metrics.totalPnlPercentage}
-          valueClassName={metrics.totalPnl >= 0 ? "text-emerald-400" : "text-red-400"}
+      {/* Show empty state if no trades */}
+      {trades.length === 0 ? (
+        <EmptyState 
+          title="No Analytics Data"
+          description="Connect your wallet to view your advanced trading analytics"
         />
-        <StatCard
-          title="Win Rate"
-          value={`${metrics.winRate.toFixed(1)}%`}
-          subtitle={`${metrics.winningTrades}W / ${metrics.losingTrades}L`}
-          valueClassName={metrics.winRate >= 50 ? "text-emerald-400" : "text-amber-400"}
-        />
-        <StatCard
-          title="Profit Factor"
-          value={metrics.profitFactor === Infinity ? "∞" : metrics.profitFactor.toFixed(2)}
-          subtitle="Risk-adjusted returns"
-          valueClassName={metrics.profitFactor >= 1.5 ? "text-emerald-400" : metrics.profitFactor >= 1 ? "text-amber-400" : "text-red-400"}
-        />
-        <StatCard
-          title="Max Drawdown"
-          value={formatPercentage(-metrics.maxDrawdownPercentage)}
-          subtitle={formatCurrency(metrics.maxDrawdown)}
-          valueClassName="text-red-400"
-        />
-      </div>
+      ) : (
+        <>
+          {/* Performance Overview Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <StatCard
+              title="Total PnL"
+              value={formatCurrency(metrics.totalPnl)}
+              trend={metrics.totalPnlPercentage}
+              valueClassName={metrics.totalPnl >= 0 ? "text-emerald-400" : "text-red-400"}
+            />
+            <StatCard
+              title="Win Rate"
+              value={`${metrics.winRate.toFixed(1)}%`}
+              subtitle={`${metrics.winningTrades}W / ${metrics.losingTrades}L`}
+              valueClassName={metrics.winRate >= 50 ? "text-emerald-400" : "text-amber-400"}
+            />
+            <StatCard
+              title="Profit Factor"
+              value={metrics.profitFactor === Infinity ? "∞" : metrics.profitFactor.toFixed(2)}
+              subtitle="Risk-adjusted returns"
+              valueClassName={metrics.profitFactor >= 1.5 ? "text-emerald-400" : metrics.profitFactor >= 1 ? "text-amber-400" : "text-red-400"}
+            />
+            <StatCard
+              title="Max Drawdown"
+              value={formatPercentage(-metrics.maxDrawdownPercentage)}
+              subtitle={formatCurrency(metrics.maxDrawdown)}
+              valueClassName="text-red-400"
+            />
+          </div>
 
-      {/* Main Charts */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <PnLChart data={pnlChartData} showCumulative={true} title="Cumulative PnL" />
-        <DrawdownChart data={drawdownChartData} />
-      </div>
+          {/* Main Charts */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <PnLChart data={pnlChartData} showCumulative={true} title="Cumulative PnL" />
+            <DrawdownChart data={drawdownChartData} />
+          </div>
 
       {/* Performance Radar & Long/Short */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -351,6 +383,8 @@ export default function AnalyticsPage() {
           </div>
         </CardContent>
       </Card>
+        </>
+      )}
     </div>
   );
 }

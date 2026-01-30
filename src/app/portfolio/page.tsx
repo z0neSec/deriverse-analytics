@@ -1,11 +1,10 @@
 "use client";
 
-import React, { useEffect, useMemo } from "react";
+import React, { useMemo } from "react";
 import { useTradingStore } from "@/store";
-import { Card, CardHeader, CardTitle, CardContent, StatCard } from "@/components/ui";
+import { Card, CardHeader, CardTitle, CardContent, StatCard, EmptyState } from "@/components/ui";
 import { OpenPositions, FilterBar } from "@/components/dashboard";
-import { generateMockTrades, generateMockPositions, generateDailyPerformance } from "@/lib/mock-data";
-import { calculatePortfolioMetrics, calculateSymbolMetrics, filterTrades } from "@/lib/analytics";
+import { calculatePortfolioMetrics, calculateSymbolMetrics, filterTrades, generateDailyPerformance } from "@/lib/analytics";
 import { formatCurrency, toDate } from "@/lib/utils";
 import { format } from "date-fns";
 import { PnLChart } from "@/components/charts";
@@ -15,17 +14,7 @@ import { cn } from "@/lib/utils";
 const ALLOCATION_COLORS = ["#10B981", "#3B82F6", "#F59E0B", "#8B5CF6", "#EC4899"];
 
 export default function PortfolioPage() {
-  const { trades, positions, setTrades, setPositions, filters } = useTradingStore();
-
-  // Initialize mock data if needed
-  useEffect(() => {
-    if (trades.length === 0) {
-      const mockTrades = generateMockTrades(150);
-      const mockPositions = generateMockPositions();
-      setTrades(mockTrades);
-      setPositions(mockPositions);
-    }
-  }, [trades.length, setTrades, setPositions]);
+  const { trades, positions, filters } = useTradingStore();
 
   const filteredTrades = useMemo(() => filterTrades(trades, filters), [trades, filters]);
   const metrics = useMemo(() => calculatePortfolioMetrics(filteredTrades), [filteredTrades]);
@@ -69,26 +58,34 @@ export default function PortfolioPage() {
       {/* Filter Bar */}
       <FilterBar />
 
-      {/* Portfolio Value Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <StatCard
-          title="Total Portfolio Value"
-          value={formatCurrency(totalValue)}
-          icon={<Wallet className="w-6 h-6" />}
-          className="md:col-span-1"
+      {/* Show empty state if no trades */}
+      {trades.length === 0 ? (
+        <EmptyState 
+          title="No Portfolio Data"
+          description="Connect your wallet to view your portfolio overview"
         />
-        <StatCard
-          title="Realized PnL"
-          value={formatCurrency(metrics.totalPnl)}
-          trend={metrics.totalPnlPercentage}
-          valueClassName={metrics.totalPnl >= 0 ? "text-emerald-400" : "text-red-400"}
-          icon={metrics.totalPnl >= 0 ? <TrendingUp className="w-6 h-6" /> : <TrendingDown className="w-6 h-6" />}
-        />
-        <StatCard
-          title="Unrealized PnL"
-          value={formatCurrency(totalUnrealizedPnl)}
-          subtitle={`${positions.length} open positions`}
-          valueClassName={totalUnrealizedPnl >= 0 ? "text-emerald-400" : "text-red-400"}
+      ) : (
+        <>
+          {/* Portfolio Value Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <StatCard
+              title="Total Portfolio Value"
+              value={formatCurrency(totalValue)}
+              icon={<Wallet className="w-6 h-6" />}
+              className="md:col-span-1"
+            />
+            <StatCard
+              title="Realized PnL"
+              value={formatCurrency(metrics.totalPnl)}
+              trend={metrics.totalPnlPercentage}
+              valueClassName={metrics.totalPnl >= 0 ? "text-emerald-400" : "text-red-400"}
+              icon={metrics.totalPnl >= 0 ? <TrendingUp className="w-6 h-6" /> : <TrendingDown className="w-6 h-6" />}
+            />
+            <StatCard
+              title="Unrealized PnL"
+              value={formatCurrency(totalUnrealizedPnl)}
+              subtitle={`${positions.length} open positions`}
+              valueClassName={totalUnrealizedPnl >= 0 ? "text-emerald-400" : "text-red-400"}
           icon={totalUnrealizedPnl >= 0 ? <TrendingUp className="w-6 h-6" /> : <TrendingDown className="w-6 h-6" />}
         />
         <StatCard
@@ -225,6 +222,8 @@ export default function PortfolioPage() {
           </div>
         </CardContent>
       </Card>
+        </>
+      )}
     </div>
   );
 }

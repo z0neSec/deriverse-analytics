@@ -14,6 +14,10 @@ export const metadata: Metadata = {
   description:
     "Comprehensive trading analytics and portfolio analysis for Deriverse - the next-gen Solana trading ecosystem",
   keywords: ["Deriverse", "Solana", "Trading", "Analytics", "DeFi", "Crypto"],
+  icons: {
+    icon: "/deriverse-logo.svg",
+    apple: "/deriverse-logo.svg",
+  },
 };
 
 export default function RootLayout({
@@ -27,8 +31,9 @@ export default function RootLayout({
         <WalletContextProvider>
           <Sidebar />
           <Header />
-          <main className="ml-64 pt-16 min-h-screen">
-            <div className="p-6">{children}</div>
+          {/* Mobile: no left margin, Desktop: margin for sidebar */}
+          <main className="md:ml-64 pt-16 min-h-screen">
+            <div className="p-4 md:p-6">{children}</div>
           </main>
         </WalletContextProvider>
       </body>

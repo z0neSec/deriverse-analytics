@@ -187,14 +187,14 @@ export function TradeHistoryTable({ trades }: TradeHistoryTableProps) {
   return (
     <Card>
       <CardHeader>
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <CardTitle>Trade History</CardTitle>
           <input
             type="text"
             placeholder="Search trades..."
             value={globalFilter ?? ""}
             onChange={(e) => setGlobalFilter(e.target.value)}
-            className="px-3 py-1.5 text-sm bg-zinc-800 border border-zinc-700 rounded-lg text-white placeholder:text-zinc-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
+            className="w-full sm:w-auto px-3 py-1.5 text-sm bg-zinc-800 border border-zinc-700 rounded-lg text-white placeholder:text-zinc-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
           />
         </div>
       </CardHeader>
@@ -235,8 +235,8 @@ export function TradeHistoryTable({ trades }: TradeHistoryTableProps) {
         </div>
 
         {/* Pagination */}
-        <div className="flex items-center justify-between mt-4 pt-4 border-t border-zinc-800">
-          <div className="text-sm text-zinc-400">
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 mt-4 pt-4 border-t border-zinc-800">
+          <div className="text-sm text-zinc-400 text-center sm:text-left">
             Showing {table.getState().pagination.pageIndex * table.getState().pagination.pageSize + 1} to{" "}
             {Math.min(
               (table.getState().pagination.pageIndex + 1) * table.getState().pagination.pageSize,
@@ -252,10 +252,10 @@ export function TradeHistoryTable({ trades }: TradeHistoryTableProps) {
               disabled={!table.getCanPreviousPage()}
             >
               <ChevronLeft className="w-4 h-4" />
-              Previous
+              <span className="hidden sm:inline">Previous</span>
             </Button>
             <span className="text-sm text-zinc-400">
-              Page {table.getState().pagination.pageIndex + 1} of {table.getPageCount()}
+              {table.getState().pagination.pageIndex + 1} / {table.getPageCount()}
             </span>
             <Button
               variant="ghost"
@@ -263,7 +263,7 @@ export function TradeHistoryTable({ trades }: TradeHistoryTableProps) {
               onClick={() => table.nextPage()}
               disabled={!table.getCanNextPage()}
             >
-              Next
+              <span className="hidden sm:inline">Next</span>
               <ChevronRight className="w-4 h-4" />
             </Button>
           </div>

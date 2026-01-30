@@ -1,8 +1,8 @@
 "use client";
 
-import React, { useEffect, useMemo } from "react";
+import React, { useMemo } from "react";
 import { useTradingStore } from "@/store";
-import { Card, CardHeader, CardTitle, CardContent, Badge } from "@/components/ui";
+import { Card, CardHeader, CardTitle, CardContent, Badge, EmptyState } from "@/components/ui";
 import {
   PnLChart,
   DrawdownChart,
@@ -11,30 +11,19 @@ import {
 } from "@/components/charts";
 import { FilterBar, MetricsGrid } from "@/components/dashboard";
 import {
-  generateMockTrades,
-  generateDailyPerformance,
-} from "@/lib/mock-data";
-import {
   calculatePortfolioMetrics,
   calculateTimeBasedMetrics,
   calculateSessionMetrics,
   filterTrades,
   getOrderTypePerformance,
+  generateDailyPerformance,
 } from "@/lib/analytics";
 import { format } from "date-fns";
 import { formatCurrency, formatDuration, toDate } from "@/lib/utils";
 import { cn } from "@/lib/utils";
 
 export default function PerformancePage() {
-  const { trades, setTrades, filters } = useTradingStore();
-
-  // Initialize mock data if needed
-  useEffect(() => {
-    if (trades.length === 0) {
-      const mockTrades = generateMockTrades(150);
-      setTrades(mockTrades);
-    }
-  }, [trades.length, setTrades]);
+  const { trades, filters } = useTradingStore();
 
   const filteredTrades = useMemo(() => filterTrades(trades, filters), [trades, filters]);
   const metrics = useMemo(() => calculatePortfolioMetrics(filteredTrades), [filteredTrades]);
@@ -81,24 +70,32 @@ export default function PerformancePage() {
       {/* Filter Bar */}
       <FilterBar />
 
-      {/* Key Metrics */}
-      <MetricsGrid metrics={metrics} />
+      {/* Show empty state if no trades */}
+      {trades.length === 0 ? (
+        <EmptyState 
+          title="No Performance Data"
+          description="Connect your wallet to view your trading performance analysis"
+        />
+      ) : (
+        <>
+          {/* Key Metrics */}
+          <MetricsGrid metrics={metrics} />
 
-      {/* Charts Row */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <PnLChart data={pnlChartData} showCumulative={true} title="Cumulative PnL" />
-        <DrawdownChart data={drawdownChartData} />
-      </div>
+          {/* Charts Row */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <PnLChart data={pnlChartData} showCumulative={true} title="Cumulative PnL" />
+            <DrawdownChart data={drawdownChartData} />
+          </div>
 
-      {/* Hourly Performance */}
-      <HourlyPerformanceChart data={hourlyMetrics} />
+          {/* Hourly Performance */}
+          <HourlyPerformanceChart data={hourlyMetrics} />
 
-      {/* Session Performance */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Performance by Trading Session</CardTitle>
-        </CardHeader>
-        <CardContent>
+          {/* Session Performance */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Performance by Trading Session</CardTitle>
+            </CardHeader>
+            <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {sessionMetrics.map((session) => {
               const label = sessionLabels[session.session];
@@ -245,6 +242,8 @@ export default function PerformancePage() {
           </CardContent>
         </Card>
       </div>
+        </>
+      )}
     </div>
   );
 }

@@ -43,24 +43,26 @@ export function FilterBar() {
   };
 
   return (
-    <div className="rounded-xl border border-white/10 bg-zinc-900/50 p-4">
+    <div className="rounded-xl border border-white/10 bg-zinc-900/50 p-3 md:p-4">
       {/* Main Filter Row */}
-      <div className="flex flex-wrap items-center gap-3">
-        {/* Timeframe Selector */}
-        <div className="flex items-center gap-2 bg-zinc-800 rounded-lg p-1">
-          {TIMEFRAME_OPTIONS.map((option) => (
-            <button
-              key={option.value}
-              onClick={() => setTimeframe(option.value as typeof selectedTimeframe)}
-              className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
-                selectedTimeframe === option.value
-                  ? "bg-emerald-600 text-white"
-                  : "text-zinc-400 hover:text-white hover:bg-zinc-700"
-              }`}
-            >
-              {option.label}
-            </button>
-          ))}
+      <div className="flex flex-wrap items-center gap-2 md:gap-3">
+        {/* Timeframe Selector - Scrollable on mobile */}
+        <div className="w-full md:w-auto overflow-x-auto pb-2 md:pb-0 -mx-1 px-1">
+          <div className="flex items-center gap-1 md:gap-2 bg-zinc-800 rounded-lg p-1 min-w-max">
+            {TIMEFRAME_OPTIONS.map((option) => (
+              <button
+                key={option.value}
+                onClick={() => setTimeframe(option.value as typeof selectedTimeframe)}
+                className={`px-2 md:px-3 py-1 md:py-1.5 rounded-md text-xs md:text-sm font-medium transition-colors whitespace-nowrap ${
+                  selectedTimeframe === option.value
+                    ? "bg-emerald-600 text-white"
+                    : "text-zinc-400 hover:text-white hover:bg-zinc-700"
+                }`}
+              >
+                {option.label}
+              </button>
+            ))}
+          </div>
         </div>
 
         {/* Symbol Filter */}

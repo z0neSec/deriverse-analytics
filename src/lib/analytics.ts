@@ -11,8 +11,72 @@ import type {
   SymbolMetrics,
   FeeBreakdown,
   FilterOptions,
+  DailyPerformance,
 } from "@/types";
 import { toDate, getTime } from "@/lib/utils";
+
+/**
+ * Generate daily performance data from trades
+ * This aggregates trades by day and calculates cumulative metrics
+ */
+export function generateDailyPerformance(
+  trades: Trade[]
+): DailyPerformance[] {
+  const dailyMap = new Map<string, DailyPerformance>();
+  const closedTrades = trades.filter((t) => t.status === "closed" && t.pnl !== undefined);
+
+  for (const trade of closedTrades) {
+    const dateKey = toDate(trade.exitTime!).toISOString().split("T")[0];
+    const existing = dailyMap.get(dateKey);
+
+    if (existing) {
+      existing.pnl += trade.pnl || 0;
+      existing.volume += trade.entryPrice * trade.quantity;
+      existing.fees += trade.fees.totalFee;
+      existing.tradeCount += 1;
+      if ((trade.pnl || 0) > 0) {
+        existing.winCount += 1;
+      } else {
+        existing.lossCount += 1;
+      }
+    } else {
+      dailyMap.set(dateKey, {
+        date: new Date(dateKey),
+        pnl: trade.pnl || 0,
+        cumulativePnl: 0,
+        volume: trade.entryPrice * trade.quantity,
+        fees: trade.fees.totalFee,
+        tradeCount: 1,
+        winCount: (trade.pnl || 0) > 0 ? 1 : 0,
+        lossCount: (trade.pnl || 0) <= 0 ? 1 : 0,
+        drawdown: 0,
+        drawdownPercentage: 0,
+      });
+    }
+  }
+
+  // Sort by date and calculate cumulative values
+  const sorted = Array.from(dailyMap.values()).sort(
+    (a, b) => getTime(a.date) - getTime(b.date)
+  );
+
+  let cumulative = 0;
+  let peak = 0;
+
+  for (const day of sorted) {
+    cumulative += day.pnl;
+    day.cumulativePnl = cumulative;
+
+    if (cumulative > peak) {
+      peak = cumulative;
+    }
+
+    day.drawdown = peak - cumulative;
+    day.drawdownPercentage = peak > 0 ? (day.drawdown / peak) * 100 : 0;
+  }
+
+  return sorted;
+}
 
 export function calculatePortfolioMetrics(trades: Trade[]): PortfolioMetrics {
   const closedTrades = trades.filter(
