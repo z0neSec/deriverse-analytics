@@ -6,7 +6,7 @@ import { Card, CardHeader, CardTitle, CardContent, StatCard } from "@/components
 import { OpenPositions, FilterBar } from "@/components/dashboard";
 import { generateMockTrades, generateMockPositions, generateDailyPerformance } from "@/lib/mock-data";
 import { calculatePortfolioMetrics, calculateSymbolMetrics, filterTrades } from "@/lib/analytics";
-import { formatCurrency } from "@/lib/utils";
+import { formatCurrency, toDate } from "@/lib/utils";
 import { format } from "date-fns";
 import { PnLChart } from "@/components/charts";
 import { Wallet, TrendingUp, TrendingDown, BarChart3 } from "lucide-react";
@@ -51,7 +51,7 @@ export default function PortfolioPage() {
   const totalValue = accountBalance + metrics.totalPnl + totalUnrealizedPnl;
 
   const pnlChartData = dailyPerformance.map((d) => ({
-    date: format(d.date, "MMM dd"),
+    date: format(toDate(d.date), "MMM dd"),
     pnl: d.pnl,
     cumulativePnl: d.cumulativePnl,
   }));

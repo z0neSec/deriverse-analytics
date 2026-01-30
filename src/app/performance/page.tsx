@@ -22,7 +22,7 @@ import {
   getOrderTypePerformance,
 } from "@/lib/analytics";
 import { format } from "date-fns";
-import { formatCurrency, formatDuration } from "@/lib/utils";
+import { formatCurrency, formatDuration, toDate } from "@/lib/utils";
 import { cn } from "@/lib/utils";
 
 export default function PerformancePage() {
@@ -45,13 +45,13 @@ export default function PerformancePage() {
 
   // Prepare chart data
   const pnlChartData = dailyPerformance.map((d) => ({
-    date: format(d.date, "MMM dd"),
+    date: format(toDate(d.date), "MMM dd"),
     pnl: d.pnl,
     cumulativePnl: d.cumulativePnl,
   }));
 
   const drawdownChartData = dailyPerformance.map((d) => ({
-    date: format(d.date, "MMM dd"),
+    date: format(toDate(d.date), "MMM dd"),
     drawdown: d.drawdown,
     drawdownPercentage: d.drawdownPercentage,
   }));

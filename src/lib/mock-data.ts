@@ -12,6 +12,7 @@ import type {
   OrderType,
   MarketType,
 } from "@/types";
+import { toDate, getTime } from "@/lib/utils";
 
 const SYMBOLS = ["SOL/USDC", "BTC/USDC", "ETH/USDC", "RAY/USDC", "BONK/USDC"];
 const MARKET_TYPES: MarketType[] = ["spot", "perpetual"];
@@ -110,7 +111,7 @@ export function generateMockTrades(count: number = 100): Trade[] {
   }
 
   return trades.sort(
-    (a, b) => b.entryTime.getTime() - a.entryTime.getTime()
+    (a, b) => getTime(b.entryTime) - getTime(a.entryTime)
   );
 }
 
@@ -165,7 +166,7 @@ export function generateDailyPerformance(
   const closedTrades = trades.filter((t) => t.status === "closed" && t.pnl !== undefined);
 
   for (const trade of closedTrades) {
-    const dateKey = trade.exitTime!.toISOString().split("T")[0];
+    const dateKey = toDate(trade.exitTime!).toISOString().split("T")[0];
     const existing = dailyMap.get(dateKey);
 
     if (existing) {
@@ -196,7 +197,7 @@ export function generateDailyPerformance(
 
   // Sort by date and calculate cumulative values
   const sorted = Array.from(dailyMap.values()).sort(
-    (a, b) => a.date.getTime() - b.date.getTime()
+    (a, b) => getTime(a.date) - getTime(b.date)
   );
 
   let cumulative = 0;

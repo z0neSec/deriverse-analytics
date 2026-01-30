@@ -66,8 +66,8 @@ export function LongShortRatioChart({
         </div>
 
         {/* PnL Comparison Bar Chart */}
-        <div className="h-[120px] w-full">
-          <ResponsiveContainer width="100%" height="100%">
+        <div className="h-[120px] w-full min-h-[100px]">
+          <ResponsiveContainer width="100%" height="100%" minWidth={100} minHeight={80}>
             <BarChart data={data} layout="vertical">
               <XAxis type="number" hide />
               <YAxis

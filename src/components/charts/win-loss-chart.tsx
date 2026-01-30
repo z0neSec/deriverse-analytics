@@ -28,8 +28,8 @@ export function WinLossChart({ data }: WinLossChartProps) {
         <CardTitle>Daily Win/Loss</CardTitle>
       </CardHeader>
       <CardContent>
-        <div className="h-[200px] w-full">
-          <ResponsiveContainer width="100%" height="100%">
+        <div className="h-[200px] w-full min-h-[150px]">
+          <ResponsiveContainer width="100%" height="100%" minWidth={100} minHeight={100}>
             <BarChart
               data={data}
               margin={{ top: 10, right: 10, left: 0, bottom: 0 }}

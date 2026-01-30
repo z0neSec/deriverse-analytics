@@ -5,6 +5,30 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
+/**
+ * Safely convert a date-like value to a Date object
+ * Handles Date objects, strings, and numbers (timestamps)
+ */
+export function toDate(date: Date | string | number): Date {
+  if (date instanceof Date) {
+    return date;
+  }
+  return new Date(date);
+}
+
+/**
+ * Safely get timestamp from a date-like value
+ */
+export function getTime(date: Date | string | number): number {
+  if (date instanceof Date) {
+    return date.getTime();
+  }
+  if (typeof date === 'number') {
+    return date;
+  }
+  return new Date(date).getTime();
+}
+
 export function formatCurrency(value: number, decimals = 2): string {
   return new Intl.NumberFormat("en-US", {
     style: "currency",

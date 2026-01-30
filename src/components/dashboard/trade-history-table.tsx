@@ -12,6 +12,7 @@ import {
   SortingState,
 } from "@tanstack/react-table";
 import { format } from "date-fns";
+import { toDate } from "@/lib/utils";
 import {
   ArrowUpDown,
   ChevronLeft,
@@ -52,8 +53,8 @@ export function TradeHistoryTable({ trades }: TradeHistoryTableProps) {
         ),
         cell: (info) => (
           <div className="text-sm">
-            <p className="text-white">{format(info.getValue(), "MMM dd, yyyy")}</p>
-            <p className="text-zinc-500 text-xs">{format(info.getValue(), "HH:mm:ss")}</p>
+            <p className="text-white">{format(toDate(info.getValue()), "MMM dd, yyyy")}</p>
+            <p className="text-zinc-500 text-xs">{format(toDate(info.getValue()), "HH:mm:ss")}</p>
           </div>
         ),
       }),

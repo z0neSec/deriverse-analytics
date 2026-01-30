@@ -25,6 +25,7 @@ import {
   calculateSymbolMetrics,
   filterTrades,
 } from "@/lib/analytics";
+import { toDate } from "@/lib/utils";
 import { format } from "date-fns";
 
 export default function DashboardPage() {
@@ -73,19 +74,19 @@ export default function DashboardPage() {
 
   // Prepare chart data
   const pnlChartData = dailyPerformance.map((d) => ({
-    date: format(d.date, "MMM dd"),
+    date: format(toDate(d.date), "MMM dd"),
     pnl: d.pnl,
     cumulativePnl: d.cumulativePnl,
   }));
 
   const drawdownChartData = dailyPerformance.map((d) => ({
-    date: format(d.date, "MMM dd"),
+    date: format(toDate(d.date), "MMM dd"),
     drawdown: d.drawdown,
     drawdownPercentage: d.drawdownPercentage,
   }));
 
   const winLossData = dailyPerformance.map((d) => ({
-    date: format(d.date, "MMM dd"),
+    date: format(toDate(d.date), "MMM dd"),
     pnl: d.pnl,
   }));
 

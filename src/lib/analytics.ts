@@ -12,6 +12,7 @@ import type {
   FeeBreakdown,
   FilterOptions,
 } from "@/types";
+import { toDate, getTime } from "@/lib/utils";
 
 export function calculatePortfolioMetrics(trades: Trade[]): PortfolioMetrics {
   const closedTrades = trades.filter(
@@ -60,7 +61,7 @@ export function calculatePortfolioMetrics(trades: Trade[]): PortfolioMetrics {
   // Calculate trade durations
   const durations = closedTrades
     .filter((t) => t.exitTime)
-    .map((t) => t.exitTime!.getTime() - t.entryTime.getTime());
+    .map((t) => getTime(t.exitTime!) - getTime(t.entryTime));
 
   const averageTradeDuration =
     durations.length > 0
@@ -73,7 +74,7 @@ export function calculatePortfolioMetrics(trades: Trade[]): PortfolioMetrics {
   let cumulative = 0;
 
   const sortedTrades = [...closedTrades].sort(
-    (a, b) => a.exitTime!.getTime() - b.exitTime!.getTime()
+    (a, b) => getTime(a.exitTime!) - getTime(b.exitTime!)
   );
 
   for (const trade of sortedTrades) {
@@ -127,7 +128,7 @@ export function calculateTimeBasedMetrics(trades: Trade[]): TimeBasedMetrics[] {
   const closedTrades = trades.filter((t) => t.status === "closed" && t.pnl !== undefined);
 
   for (const trade of closedTrades) {
-    const hour = trade.entryTime.getHours();
+    const hour = toDate(trade.entryTime).getHours();
     const data = hourlyData.get(hour)!;
     data.pnl += trade.pnl || 0;
     data.total += 1;
@@ -161,7 +162,7 @@ export function calculateSessionMetrics(trades: Trade[]): SessionMetrics[] {
   const closedTrades = trades.filter((t) => t.status === "closed" && t.pnl !== undefined);
 
   for (const trade of closedTrades) {
-    const hour = trade.entryTime.getUTCHours();
+    const hour = toDate(trade.entryTime).getUTCHours();
     let session: "asian" | "european" | "american";
 
     if (hour >= 0 && hour < 8) {
@@ -179,7 +180,7 @@ export function calculateSessionMetrics(trades: Trade[]): SessionMetrics[] {
     }
     if (trade.exitTime) {
       sessionDurations[session].push(
-        trade.exitTime.getTime() - trade.entryTime.getTime()
+        getTime(trade.exitTime) - getTime(trade.entryTime)
       );
     }
   }
@@ -249,7 +250,7 @@ export function calculateFeeBreakdown(trades: Trade[]): FeeBreakdown {
     takerFees += trade.fees.takerFee;
     fundingFees += trade.fees.fundingFee || 0;
 
-    const dateKey = trade.entryTime.toISOString().split("T")[0];
+    const dateKey = toDate(trade.entryTime).toISOString().split("T")[0];
     const existing = feesByDate.get(dateKey) || 0;
     feesByDate.set(dateKey, existing + trade.fees.totalFee);
   }
@@ -281,10 +282,11 @@ export function calculateFeeBreakdown(trades: Trade[]): FeeBreakdown {
 export function filterTrades(trades: Trade[], filters: FilterOptions): Trade[] {
   return trades.filter((trade) => {
     // Date range filter
-    if (filters.dateRange.start && trade.entryTime < filters.dateRange.start) {
+    const entryTime = getTime(trade.entryTime);
+    if (filters.dateRange.start && entryTime < getTime(filters.dateRange.start)) {
       return false;
     }
-    if (filters.dateRange.end && trade.entryTime > filters.dateRange.end) {
+    if (filters.dateRange.end && entryTime > getTime(filters.dateRange.end)) {
       return false;
     }
 
@@ -334,7 +336,7 @@ export function getOrderTypePerformance(trades: Trade[]) {
   for (const trade of closedTrades) {
     const existing = orderTypeData.get(trade.orderType);
     const duration = trade.exitTime
-      ? trade.exitTime.getTime() - trade.entryTime.getTime()
+      ? getTime(trade.exitTime) - getTime(trade.entryTime)
       : 0;
 
     if (existing) {

@@ -44,8 +44,8 @@ export function PnLChart({ data, showCumulative = true, title = "PnL History" }:
         </div>
       </CardHeader>
       <CardContent>
-        <div className="h-[300px] w-full">
-          <ResponsiveContainer width="100%" height="100%">
+        <div className="h-[300px] w-full min-h-[200px]">
+          <ResponsiveContainer width="100%" height="100%" minWidth={100} minHeight={100}>
             <AreaChart
               data={data}
               margin={{ top: 10, right: 10, left: 0, bottom: 0 }}

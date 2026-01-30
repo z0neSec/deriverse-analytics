@@ -17,7 +17,7 @@ import {
   calculateSymbolMetrics,
   filterTrades,
 } from "@/lib/analytics";
-import { formatCurrency, formatPercentage } from "@/lib/utils";
+import { formatCurrency, formatPercentage, toDate } from "@/lib/utils";
 import { format } from "date-fns";
 import {
   BarChart,
@@ -55,13 +55,13 @@ export default function AnalyticsPage() {
 
   // Prepare chart data
   const pnlChartData = dailyPerformance.map((d) => ({
-    date: format(d.date, "MMM dd"),
+    date: format(toDate(d.date), "MMM dd"),
     pnl: d.pnl,
     cumulativePnl: d.cumulativePnl,
   }));
 
   const drawdownChartData = dailyPerformance.map((d) => ({
-    date: format(d.date, "MMM dd"),
+    date: format(toDate(d.date), "MMM dd"),
     drawdown: d.drawdown,
     drawdownPercentage: d.drawdownPercentage,
   }));
@@ -79,7 +79,7 @@ export default function AnalyticsPage() {
     filteredTrades
       .filter((t) => t.status === "closed" && t.pnl !== undefined)
       .forEach((trade) => {
-        const dayIndex = trade.entryTime.getDay();
+        const dayIndex = toDate(trade.entryTime).getDay();
         weekdayStats[dayIndex].pnl += trade.pnl || 0;
         weekdayStats[dayIndex].trades += 1;
         if ((trade.pnl || 0) > 0) {
@@ -183,8 +183,8 @@ export default function AnalyticsPage() {
             <CardDescription>Multi-dimensional analysis of your trading</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="h-[300px] w-full">
-              <ResponsiveContainer width="100%" height="100%">
+            <div className="h-[300px] w-full min-h-[200px]">
+              <ResponsiveContainer width="100%" height="100%" minWidth={100} minHeight={100}>
                 <RadarChart cx="50%" cy="50%" outerRadius="80%" data={radarData}>
                   <PolarGrid stroke="#374151" />
                   <PolarAngleAxis dataKey="metric" tick={{ fill: "#9CA3AF", fontSize: 12 }} />
@@ -217,8 +217,8 @@ export default function AnalyticsPage() {
           <CardDescription>Identify your best and worst trading days</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="h-[300px] w-full">
-            <ResponsiveContainer width="100%" height="100%">
+          <div className="h-[300px] w-full min-h-[200px]">
+            <ResponsiveContainer width="100%" height="100%" minWidth={100} minHeight={100}>
               <BarChart
                 data={weekdayData}
                 margin={{ top: 10, right: 10, left: 0, bottom: 0 }}

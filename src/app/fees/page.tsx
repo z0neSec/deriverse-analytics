@@ -7,7 +7,7 @@ import { FeeChart } from "@/components/charts";
 import { FilterBar } from "@/components/dashboard";
 import { generateMockTrades } from "@/lib/mock-data";
 import { calculateFeeBreakdown, filterTrades } from "@/lib/analytics";
-import { formatCurrency } from "@/lib/utils";
+import { formatCurrency, toDate } from "@/lib/utils";
 import { format } from "date-fns";
 import { Activity, TrendingDown, Percent, DollarSign } from "lucide-react";
 
@@ -43,7 +43,7 @@ export default function FeesPage() {
 
   // Prepare line chart data
   const feeChartData = feeBreakdown.feesOverTime.map((d) => ({
-    date: format(d.date, "MMM dd"),
+    date: format(toDate(d.date), "MMM dd"),
     fees: d.fees,
     cumulativeFees: d.cumulativeFees,
   }));
