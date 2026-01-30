@@ -302,7 +302,7 @@ export default function JournalPage() {
 
                 {entry.lessonLearned && (
                   <div className="p-3 rounded-lg bg-emerald-900/20 border border-emerald-500/30 mb-4">
-                    <p className="text-xs text-emerald-400 font-medium mb-1">💡 Lesson Learned</p>
+                    <p className="text-xs text-emerald-400 font-medium mb-1">Lesson Learned</p>
                     <p className="text-sm text-zinc-300">{entry.lessonLearned}</p>
                   </div>
                 )}

@@ -312,7 +312,7 @@ export default function AnalyticsPage() {
       {/* Performance Insights */}
       <Card>
         <CardHeader>
-          <CardTitle>🎯 Trading Insights</CardTitle>
+          <CardTitle>Trading Insights</CardTitle>
           <CardDescription>AI-generated insights based on your trading data</CardDescription>
         </CardHeader>
         <CardContent>
@@ -320,7 +320,7 @@ export default function AnalyticsPage() {
             {/* Best Performing Day */}
             {weekdayData.filter(d => d.trades > 0).length > 0 && (
               <div className="p-4 rounded-lg bg-emerald-900/20 border border-emerald-500/30">
-                <h4 className="font-medium text-emerald-400 mb-2">📈 Best Trading Day</h4>
+                <h4 className="font-medium text-emerald-400 mb-2">Best Trading Day</h4>
                 <p className="text-sm text-zinc-300">
                   Your best performing day is{" "}
                   <span className="font-medium text-white">
@@ -356,7 +356,7 @@ export default function AnalyticsPage() {
             {/* Risk Warning */}
             {metrics.maxDrawdownPercentage > 20 && (
               <div className="p-4 rounded-lg bg-red-900/20 border border-red-500/30">
-                <h4 className="font-medium text-red-400 mb-2">⚠️ Risk Warning</h4>
+                <h4 className="font-medium text-red-400 mb-2">Risk Warning</h4>
                 <p className="text-sm text-zinc-300">
                   Your max drawdown of{" "}
                   <span className="font-medium text-red-400">
@@ -369,7 +369,7 @@ export default function AnalyticsPage() {
 
             {/* Directional Bias */}
             <div className="p-4 rounded-lg bg-amber-900/20 border border-amber-500/30">
-              <h4 className="font-medium text-amber-400 mb-2">📊 Directional Bias</h4>
+              <h4 className="font-medium text-amber-400 mb-2">Directional Bias</h4>
               <p className="text-sm text-zinc-300">
                 You have a{" "}
                 <span className="font-medium text-white">

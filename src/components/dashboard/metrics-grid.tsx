@@ -27,8 +27,9 @@ export function MetricsGrid({ metrics }: MetricsGridProps) {
         title="Total PnL"
         value={formatCurrency(metrics.totalPnl)}
         trend={metrics.totalPnlPercentage}
-        valueClassName={metrics.totalPnl >= 0 ? "text-emerald-400" : "text-red-400"}
-        icon={metrics.totalPnl >= 0 ? <TrendingUp className="w-6 h-6" /> : <TrendingDown className="w-6 h-6" />}
+        valueClassName={metrics.totalPnl >= 0 ? "text-emerald-500/90" : "text-rose-500/90"}
+        icon={metrics.totalPnl >= 0 ? <TrendingUp className="w-5 h-5" /> : <TrendingDown className="w-5 h-5" />}
+        delay={0}
       />
 
       {/* Win Rate */}
@@ -36,8 +37,9 @@ export function MetricsGrid({ metrics }: MetricsGridProps) {
         title="Win Rate"
         value={`${metrics.winRate.toFixed(1)}%`}
         subtitle={`${metrics.winningTrades}W / ${metrics.losingTrades}L`}
-        icon={<Target className="w-6 h-6" />}
-        valueClassName={metrics.winRate >= 50 ? "text-emerald-400" : "text-amber-400"}
+        icon={<Target className="w-5 h-5" />}
+        valueClassName={metrics.winRate >= 50 ? "text-emerald-500/90" : "text-amber-500/90"}
+        delay={1}
       />
 
       {/* Total Volume */}
@@ -45,31 +47,35 @@ export function MetricsGrid({ metrics }: MetricsGridProps) {
         title="Total Volume"
         value={formatCurrency(metrics.totalVolume)}
         subtitle={`${metrics.totalTrades} trades`}
-        icon={<DollarSign className="w-6 h-6" />}
+        icon={<DollarSign className="w-5 h-5" />}
+        delay={2}
       />
 
       {/* Total Fees */}
       <StatCard
         title="Total Fees"
         value={formatCurrency(metrics.totalFees)}
-        icon={<Activity className="w-6 h-6" />}
-        valueClassName="text-amber-400"
+        icon={<Activity className="w-5 h-5" />}
+        valueClassName="text-amber-500/90"
+        delay={3}
       />
 
       {/* Average Win */}
       <StatCard
         title="Average Win"
         value={formatCurrency(metrics.averageWin)}
-        icon={<TrendingUp className="w-6 h-6" />}
-        valueClassName="text-emerald-400"
+        icon={<TrendingUp className="w-5 h-5" />}
+        valueClassName="text-emerald-500/90"
+        delay={4}
       />
 
       {/* Average Loss */}
       <StatCard
         title="Average Loss"
         value={formatCurrency(metrics.averageLoss)}
-        icon={<TrendingDown className="w-6 h-6" />}
-        valueClassName="text-red-400"
+        icon={<TrendingDown className="w-5 h-5" />}
+        valueClassName="text-rose-500/90"
+        delay={5}
       />
 
       {/* Profit Factor */}
@@ -77,31 +83,35 @@ export function MetricsGrid({ metrics }: MetricsGridProps) {
         title="Profit Factor"
         value={metrics.profitFactor === Infinity ? "∞" : metrics.profitFactor.toFixed(2)}
         subtitle="Gross Profit / Gross Loss"
-        icon={<Scale className="w-6 h-6" />}
-        valueClassName={metrics.profitFactor >= 1 ? "text-emerald-400" : "text-red-400"}
+        icon={<Scale className="w-5 h-5" />}
+        valueClassName={metrics.profitFactor >= 1 ? "text-emerald-500/90" : "text-rose-500/90"}
+        delay={6}
       />
 
       {/* Avg Trade Duration */}
       <StatCard
         title="Avg Duration"
         value={formatDuration(metrics.averageTradeDuration)}
-        icon={<Clock className="w-6 h-6" />}
+        icon={<Clock className="w-5 h-5" />}
+        delay={7}
       />
 
       {/* Largest Win */}
       <StatCard
         title="Largest Win"
         value={formatCurrency(metrics.largestWin)}
-        icon={<TrendingUp className="w-6 h-6" />}
-        valueClassName="text-emerald-400"
+        icon={<TrendingUp className="w-5 h-5" />}
+        valueClassName="text-emerald-500/90"
+        delay={8}
       />
 
       {/* Largest Loss */}
       <StatCard
         title="Largest Loss"
         value={formatCurrency(metrics.largestLoss)}
-        icon={<TrendingDown className="w-6 h-6" />}
-        valueClassName="text-red-400"
+        icon={<TrendingDown className="w-5 h-5" />}
+        valueClassName="text-rose-500/90"
+        delay={9}
       />
 
       {/* Long/Short Ratio */}
@@ -109,7 +119,8 @@ export function MetricsGrid({ metrics }: MetricsGridProps) {
         title="Long/Short Ratio"
         value={metrics.longShortRatio.toFixed(2)}
         subtitle={metrics.longShortRatio > 1 ? "Long biased" : metrics.longShortRatio < 1 ? "Short biased" : "Balanced"}
-        icon={<Scale className="w-6 h-6" />}
+        icon={<Scale className="w-5 h-5" />}
+        delay={10}
       />
 
       {/* Max Drawdown */}
@@ -117,8 +128,9 @@ export function MetricsGrid({ metrics }: MetricsGridProps) {
         title="Max Drawdown"
         value={formatCurrency(metrics.maxDrawdown)}
         subtitle={formatPercentage(-metrics.maxDrawdownPercentage)}
-        icon={<AlertTriangle className="w-6 h-6" />}
-        valueClassName="text-red-400"
+        icon={<AlertTriangle className="w-5 h-5" />}
+        valueClassName="text-rose-500/90"
+        delay={11}
       />
     </div>
   );

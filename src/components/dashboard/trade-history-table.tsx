@@ -53,8 +53,8 @@ export function TradeHistoryTable({ trades }: TradeHistoryTableProps) {
         ),
         cell: (info) => (
           <div className="text-sm">
-            <p className="text-white">{format(toDate(info.getValue()), "MMM dd, yyyy")}</p>
-            <p className="text-zinc-500 text-xs">{format(toDate(info.getValue()), "HH:mm:ss")}</p>
+            <p className="text-slate-200">{format(toDate(info.getValue()), "MMM dd, yyyy")}</p>
+            <p className="text-slate-500 text-xs">{format(toDate(info.getValue()), "HH:mm:ss")}</p>
           </div>
         ),
       }),
@@ -62,7 +62,7 @@ export function TradeHistoryTable({ trades }: TradeHistoryTableProps) {
         header: "Symbol",
         cell: (info) => (
           <div className="flex items-center gap-2">
-            <span className="font-medium text-white">{info.getValue()}</span>
+            <span className="font-medium text-slate-200">{info.getValue()}</span>
             <Badge variant={info.row.original.marketType === "spot" ? "info" : "warning"} size="sm">
               {info.row.original.marketType}
             </Badge>
@@ -112,14 +112,14 @@ export function TradeHistoryTable({ trades }: TradeHistoryTableProps) {
         cell: (info) => {
           const pnl = info.getValue();
           const pnlPercentage = info.row.original.pnlPercentage;
-          if (pnl === undefined) return <span className="text-zinc-500">Open</span>;
+          if (pnl === undefined) return <span className="text-slate-500">Open</span>;
           return (
             <div>
-              <p className={cn("font-medium", pnl >= 0 ? "text-emerald-400" : "text-red-400")}>
+              <p className={cn("font-medium tabular-nums", pnl >= 0 ? "text-emerald-500/90" : "text-rose-500/90")} style={{ fontFamily: 'var(--font-jetbrains)' }}>
                 {formatCurrency(pnl)}
               </p>
               {pnlPercentage !== undefined && (
-                <p className="text-xs text-zinc-500">{formatPercentage(pnlPercentage)}</p>
+                <p className="text-xs text-slate-500 tabular-nums">{formatPercentage(pnlPercentage)}</p>
               )}
             </div>
           );
@@ -128,7 +128,7 @@ export function TradeHistoryTable({ trades }: TradeHistoryTableProps) {
       columnHelper.accessor("fees", {
         header: "Fees",
         cell: (info) => (
-          <span className="text-amber-400">{formatCurrency(info.getValue().totalFee)}</span>
+          <span className="text-amber-500/90 tabular-nums" style={{ fontFamily: 'var(--font-jetbrains)' }}>{formatCurrency(info.getValue().totalFee)}</span>
         ),
       }),
       columnHelper.accessor("status", {
@@ -194,7 +194,7 @@ export function TradeHistoryTable({ trades }: TradeHistoryTableProps) {
             placeholder="Search trades..."
             value={globalFilter ?? ""}
             onChange={(e) => setGlobalFilter(e.target.value)}
-            className="w-full sm:w-auto px-3 py-1.5 text-sm bg-zinc-800 border border-zinc-700 rounded-lg text-white placeholder:text-zinc-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
+            className="w-full sm:w-auto px-3 py-1.5 text-sm bg-slate-800/60 border border-slate-700/50 rounded-lg text-slate-200 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-slate-500/30"
           />
         </div>
       </CardHeader>
@@ -203,11 +203,11 @@ export function TradeHistoryTable({ trades }: TradeHistoryTableProps) {
           <table className="w-full">
             <thead>
               {table.getHeaderGroups().map((headerGroup) => (
-                <tr key={headerGroup.id} className="border-b border-zinc-800">
+                <tr key={headerGroup.id} className="border-b border-slate-800/60">
                   {headerGroup.headers.map((header) => (
                     <th
                       key={header.id}
-                      className="px-4 py-3 text-left text-xs font-medium text-zinc-400 uppercase tracking-wider"
+                      className="px-4 py-3 text-left text-[10px] font-medium text-slate-500 uppercase tracking-wider"
                     >
                       {header.isPlaceholder
                         ? null
@@ -217,14 +217,14 @@ export function TradeHistoryTable({ trades }: TradeHistoryTableProps) {
                 </tr>
               ))}
             </thead>
-            <tbody className="divide-y divide-zinc-800/50">
+            <tbody className="divide-y divide-slate-800/40">
               {table.getRowModel().rows.map((row) => (
                 <tr
                   key={row.id}
-                  className="hover:bg-zinc-800/30 transition-colors"
+                  className="hover:bg-slate-800/20 transition-colors"
                 >
                   {row.getVisibleCells().map((cell) => (
-                    <td key={cell.id} className="px-4 py-3 text-sm text-zinc-300">
+                    <td key={cell.id} className="px-4 py-3 text-sm text-slate-400">
                       {flexRender(cell.column.columnDef.cell, cell.getContext())}
                     </td>
                   ))}
@@ -235,8 +235,8 @@ export function TradeHistoryTable({ trades }: TradeHistoryTableProps) {
         </div>
 
         {/* Pagination */}
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 mt-4 pt-4 border-t border-zinc-800">
-          <div className="text-sm text-zinc-400 text-center sm:text-left">
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 mt-4 pt-4 border-t border-slate-800/60">
+          <div className="text-sm text-slate-500 text-center sm:text-left">
             Showing {table.getState().pagination.pageIndex * table.getState().pagination.pageSize + 1} to{" "}
             {Math.min(
               (table.getState().pagination.pageIndex + 1) * table.getState().pagination.pageSize,
@@ -254,7 +254,7 @@ export function TradeHistoryTable({ trades }: TradeHistoryTableProps) {
               <ChevronLeft className="w-4 h-4" />
               <span className="hidden sm:inline">Previous</span>
             </Button>
-            <span className="text-sm text-zinc-400">
+            <span className="text-sm text-slate-500">
               {table.getState().pagination.pageIndex + 1} / {table.getPageCount()}
             </span>
             <Button

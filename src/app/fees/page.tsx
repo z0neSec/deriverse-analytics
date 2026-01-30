@@ -187,7 +187,7 @@ export default function FeesPage() {
       {/* Fee Optimization Tips */}
       <Card>
         <CardHeader>
-          <CardTitle>💡 Fee Optimization Tips</CardTitle>
+          <CardTitle>Fee Optimization Tips</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

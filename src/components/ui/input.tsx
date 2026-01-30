@@ -25,9 +25,9 @@ export function Select({
   return (
     <select
       className={cn(
-        "appearance-none rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-white",
-        "focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500",
-        "cursor-pointer transition-colors",
+        "appearance-none rounded-lg border border-slate-700/60 bg-slate-800/60 px-3 py-2 text-sm text-slate-200",
+        "focus:outline-none focus:ring-2 focus:ring-slate-500/30 focus:border-slate-600",
+        "cursor-pointer transition-colors backdrop-blur-sm",
         className
       )}
       value={value}
@@ -52,9 +52,9 @@ export function Input({ className, ...props }: React.InputHTMLAttributes<HTMLInp
   return (
     <input
       className={cn(
-        "rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-white placeholder:text-zinc-500",
-        "focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500",
-        "transition-colors",
+        "rounded-lg border border-slate-700/60 bg-slate-800/60 px-3 py-2 text-sm text-slate-200 placeholder:text-slate-500",
+        "focus:outline-none focus:ring-2 focus:ring-slate-500/30 focus:border-slate-600",
+        "transition-colors backdrop-blur-sm",
         className
       )}
       {...props}
@@ -66,9 +66,9 @@ export function Textarea({ className, ...props }: React.TextareaHTMLAttributes<H
   return (
     <textarea
       className={cn(
-        "rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-white placeholder:text-zinc-500",
-        "focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500",
-        "transition-colors resize-none",
+        "rounded-lg border border-slate-700/60 bg-slate-800/60 px-3 py-2 text-sm text-slate-200 placeholder:text-slate-500",
+        "focus:outline-none focus:ring-2 focus:ring-slate-500/30 focus:border-slate-600",
+        "transition-colors resize-none backdrop-blur-sm",
         className
       )}
       {...props}

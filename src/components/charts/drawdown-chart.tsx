@@ -29,7 +29,10 @@ export function DrawdownChart({ data }: DrawdownChartProps) {
       <CardHeader>
         <div className="flex items-center justify-between">
           <CardTitle>Drawdown</CardTitle>
-          <span className="text-lg font-bold text-red-400">
+          <span 
+            className="text-sm font-medium text-rose-500/90 tabular-nums"
+            style={{ fontFamily: 'var(--font-jetbrains)' }}
+          >
             Max: {formatPercentage(-maxDrawdown)}
           </span>
         </div>
@@ -43,21 +46,21 @@ export function DrawdownChart({ data }: DrawdownChartProps) {
             >
               <defs>
                 <linearGradient id="drawdownGradient" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#EF4444" stopOpacity={0.4} />
-                  <stop offset="95%" stopColor="#EF4444" stopOpacity={0} />
+                  <stop offset="5%" stopColor="#be123c" stopOpacity={0.25} />
+                  <stop offset="95%" stopColor="#be123c" stopOpacity={0} />
                 </linearGradient>
               </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="#374151" opacity={0.3} />
+              <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" opacity={0.5} />
               <XAxis
                 dataKey="date"
-                stroke="#6B7280"
-                fontSize={12}
+                stroke="#475569"
+                fontSize={11}
                 tickLine={false}
                 axisLine={false}
               />
               <YAxis
-                stroke="#6B7280"
-                fontSize={12}
+                stroke="#475569"
+                fontSize={11}
                 tickLine={false}
                 axisLine={false}
                 tickFormatter={(value) => `${value.toFixed(0)}%`}
@@ -66,18 +69,19 @@ export function DrawdownChart({ data }: DrawdownChartProps) {
               />
               <Tooltip
                 contentStyle={{
-                  backgroundColor: "#18181B",
-                  border: "1px solid rgba(255,255,255,0.1)",
+                  backgroundColor: "rgba(15, 23, 42, 0.95)",
+                  border: "1px solid rgba(148, 163, 184, 0.1)",
                   borderRadius: "8px",
-                  color: "#fff",
+                  color: "#e2e8f0",
+                  fontSize: "12px",
                 }}
                 formatter={(value) => [formatPercentage(-Number(value)), "Drawdown"]}
               />
               <Area
                 type="monotone"
                 dataKey="drawdownPercentage"
-                stroke="#EF4444"
-                strokeWidth={2}
+                stroke="#be123c"
+                strokeWidth={1.5}
                 fill="url(#drawdownGradient)"
               />
             </AreaChart>

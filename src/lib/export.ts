@@ -239,7 +239,7 @@ export function generatePDFContent(
 </head>
 <body>
   <div class="header">
-    <h1>📊 Deriverse Trading Report</h1>
+    <h1>Deriverse Trading Report</h1>
     <p>Generated on ${date}</p>
   </div>
 

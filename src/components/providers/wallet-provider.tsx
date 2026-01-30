@@ -53,12 +53,12 @@ function WalletStateHandler({ children }: { children: React.ReactNode }) {
           deriverseService.getPositions(),
         ]);
 
-        console.log(`✅ Loaded ${trades.length} trades and ${positions.length} positions from Deriverse`);
+        console.log(`Loaded ${trades.length} trades and ${positions.length} positions from Deriverse`);
         setTrades(trades);
         setPositions(positions);
       } else {
         // No Deriverse client for this wallet - show empty state
-        console.log("ℹ️ No Deriverse account found for this wallet");
+        console.log("No Deriverse account found for this wallet");
         setTrades([]);
         setPositions([]);
       }

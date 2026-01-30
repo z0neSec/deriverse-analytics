@@ -96,10 +96,10 @@ export class DeriverseService {
       // Initialize the engine (loads root state)
       await (this.engine as { initialize: () => Promise<void> }).initialize();
       this.initialized = true;
-      console.log("✅ Deriverse Engine initialized successfully");
+      console.log("Deriverse Engine initialized successfully");
       return true;
     } catch (error) {
-      console.warn("⚠️ Deriverse SDK initialization failed, using mock data:", error);
+      console.warn("Deriverse SDK initialization failed, using mock data:", error);
       this.initialized = false;
       return false;
     }
@@ -122,10 +122,10 @@ export class DeriverseService {
       
       const engine = this.engine as { originalClientId?: number };
       if (engine.originalClientId) {
-        console.log("✅ Connected to Deriverse client:", engine.originalClientId);
+        console.log("Connected to Deriverse client:", engine.originalClientId);
         return true;
       } else {
-        console.log("ℹ️ No Deriverse client found for this wallet");
+        console.log("No Deriverse client found for this wallet");
         return false;
       }
     } catch (error) {

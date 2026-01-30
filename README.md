@@ -1,4 +1,4 @@
-# Deriverse Analytics 📊
+# Deriverse Analytics
 
 **Professional Trading Analytics Dashboard for Deriverse DEX**
 
@@ -8,7 +8,7 @@ Built for the Deriverse Hackathon - A comprehensive trading analytics solution i
 ![Next.js](https://img.shields.io/badge/Next.js-15-black?style=flat-square&logo=next.js)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5.0-blue?style=flat-square&logo=typescript)
 
-## 🚀 Features
+## Features
 
 ### Dashboard Overview
 - **Real-time PnL Tracking** - Cumulative and daily profit/loss visualization
@@ -37,7 +37,7 @@ Built for the Deriverse Hackathon - A comprehensive trading analytics solution i
 - **Date Range Selection** - Customizable time periods
 - **Order Type Analysis** - Market vs limit order performance
 
-## 🛠️ Tech Stack
+## Tech Stack
 
 - **Framework**: [Next.js 15](https://nextjs.org) with App Router
 - **Language**: [TypeScript](https://www.typescriptlang.org)
@@ -49,7 +49,7 @@ Built for the Deriverse Hackathon - A comprehensive trading analytics solution i
 - **Blockchain**: [Solana Web3.js v2](https://github.com/solana-labs/solana-web3.js)
 - **DEX SDK**: [@deriverse/kit](https://www.npmjs.com/package/@deriverse/kit)
 
-## 📦 Installation
+## Installation
 
 ```bash
 # Clone the repository
@@ -65,7 +65,7 @@ npm run dev
 
 Open [http://localhost:3000](http://localhost:3000) to view the dashboard.
 
-## 🏗️ Project Structure
+## Project Structure
 
 ```
 src/
@@ -94,7 +94,7 @@ src/
     └── deriverse.ts       # Deriverse-specific types
 ```
 
-## 📊 Analytics Calculations
+## Analytics Calculations
 
 The dashboard includes comprehensive analytics calculations:
 
@@ -104,7 +104,7 @@ The dashboard includes comprehensive analytics calculations:
 - **Drawdown Analysis**: Maximum drawdown percentage and recovery time
 - **Risk Metrics**: Risk-reward ratio, average win/loss sizing
 
-## 🔗 Deriverse Integration
+## Deriverse Integration
 
 This dashboard is built for [Deriverse](https://deriverse.gitbook.io/deriverse-v1), a Solana-based DEX supporting:
 
@@ -113,7 +113,7 @@ This dashboard is built for [Deriverse](https://deriverse.gitbook.io/deriverse-v
 - **Program ID**: `Drvrseg8AQLP8B96DBGmHRjFGviFNYTkHueY9g3k27Gu`
 - **Network**: Solana Devnet
 
-## 🎨 Screenshots
+## Screenshots
 
 The dashboard features a modern dark theme optimized for trading:
 
@@ -122,7 +122,7 @@ The dashboard features a modern dark theme optimized for trading:
 - Responsive design for desktop use
 - Intuitive navigation sidebar
 
-## 🚢 Deployment
+## Deployment
 
 ### Vercel (Recommended)
 
@@ -139,7 +139,7 @@ docker build -t deriverse-analytics .
 docker run -p 3000:3000 deriverse-analytics
 ```
 
-## 📝 Hackathon Submission
+## Hackathon Submission
 
 This project was built for the **Deriverse Hackathon** with the goal of creating:
 
@@ -147,32 +147,32 @@ This project was built for the **Deriverse Hackathon** with the goal of creating
 
 ### Features Implemented
 
-- ✅ Total PnL tracking
-- ✅ Volume and fee analysis
-- ✅ Win rate statistics
-- ✅ Trade duration calculations
-- ✅ Long/short ratio analysis
-- ✅ Largest gain/loss tracking
-- ✅ Symbol filtering
-- ✅ Date range selection
-- ✅ Historical PnL charts
-- ✅ Drawdown visualization
-- ✅ Time-based performance metrics
-- ✅ Trade history with annotations
-- ✅ Fee breakdown analysis
-- ✅ Order type analysis
+- [x] Total PnL tracking
+- [x] Volume and fee analysis
+- [x] Win rate statistics
+- [x] Trade duration calculations
+- [x] Long/short ratio analysis
+- [x] Largest gain/loss tracking
+- [x] Symbol filtering
+- [x] Date range selection
+- [x] Historical PnL charts
+- [x] Drawdown visualization
+- [x] Time-based performance metrics
+- [x] Trade history with annotations
+- [x] Fee breakdown analysis
+- [x] Order type analysis
 
-## 📚 Resources
+## Resources
 
 - [Deriverse Documentation](https://deriverse.gitbook.io/deriverse-v1)
 - [Deriverse SDK Example](https://github.com/deriverse/kit-example)
 - [@deriverse/kit on NPM](https://www.npmjs.com/package/@deriverse/kit)
 - [Deriverse Discord](https://discord.gg/gSGV5wr8)
 
-## 📄 License
+## License
 
 MIT License - feel free to use this project as a starting point for your own trading analytics solutions.
 
 ---
 
-**Built with ❤️ for the Deriverse Hackathon**
+**Built for the Deriverse Hackathon**
