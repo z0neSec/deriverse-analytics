@@ -8,9 +8,8 @@ import { generateMockTrades, generateMockPositions, generateDailyPerformance } f
 import { calculatePortfolioMetrics, calculateSymbolMetrics, filterTrades } from "@/lib/analytics";
 import { formatCurrency } from "@/lib/utils";
 import { format } from "date-fns";
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from "recharts";
 import { PnLChart } from "@/components/charts";
-import { Wallet, TrendingUp, TrendingDown, PieChartIcon } from "lucide-react";
+import { Wallet, TrendingUp, TrendingDown, BarChart3 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const ALLOCATION_COLORS = ["#10B981", "#3B82F6", "#F59E0B", "#8B5CF6", "#EC4899"];
@@ -39,6 +38,9 @@ export default function PortfolioPage() {
     value: s.volume,
     color: ALLOCATION_COLORS[index % ALLOCATION_COLORS.length],
   }));
+
+  const totalAllocationVolume = allocationData.reduce((sum, d) => sum + d.value, 0);
+  const maxAllocationValue = Math.max(...allocationData.map(d => d.value), 1);
 
   // Calculate unrealized PnL from positions
   const totalUnrealizedPnl = positions.reduce((sum, p) => sum + p.unrealizedPnl, 0);
@@ -92,80 +94,63 @@ export default function PortfolioPage() {
         <StatCard
           title="Position Value"
           value={formatCurrency(totalPositionValue)}
-          icon={<PieChartIcon className="w-6 h-6" />}
+          icon={<BarChart3 className="w-6 h-6" />}
         />
       </div>
 
       {/* Portfolio Allocation & PnL */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Allocation Pie Chart */}
+        {/* Allocation Horizontal Bar Chart */}
         <Card>
           <CardHeader>
             <CardTitle>Portfolio Allocation by Volume</CardTitle>
           </CardHeader>
           <CardContent>
             {allocationData.length > 0 ? (
-              <>
-                <div className="h-[250px] w-full">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
-                      <Pie
-                        data={allocationData}
-                        cx="50%"
-                        cy="50%"
-                        innerRadius={60}
-                        outerRadius={90}
-                        paddingAngle={3}
-                        dataKey="value"
-                      >
-                        {allocationData.map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={entry.color} />
-                        ))}
-                      </Pie>
-                      <Tooltip
-                        contentStyle={{
-                          backgroundColor: "#18181B",
-                          border: "1px solid rgba(255,255,255,0.1)",
-                          borderRadius: "8px",
-                          color: "#fff",
-                        }}
-                        formatter={(value) => [formatCurrency(Number(value)), "Volume"]}
-                      />
-                      <Legend />
-                    </PieChart>
-                  </ResponsiveContainer>
-                </div>
-
-                {/* Allocation Details */}
-                <div className="mt-4 space-y-2">
-                  {allocationData.map((item) => {
-                    const totalVolume = allocationData.reduce((sum, d) => sum + d.value, 0);
-                    const percentage = totalVolume > 0 ? (item.value / totalVolume) * 100 : 0;
-                    return (
-                      <div
-                        key={item.name}
-                        className="flex items-center justify-between p-2 rounded-lg bg-zinc-800/30"
-                      >
+              <div className="space-y-4">
+                {allocationData.map((item) => {
+                  const percentage = totalAllocationVolume > 0 ? (item.value / totalAllocationVolume) * 100 : 0;
+                  const barWidth = (item.value / maxAllocationValue) * 100;
+                  return (
+                    <div key={item.name} className="space-y-2">
+                      <div className="flex items-center justify-between text-sm">
                         <div className="flex items-center gap-2">
-                          <div
-                            className="w-3 h-3 rounded-full"
+                          <div 
+                            className="w-3 h-3 rounded-full" 
                             style={{ backgroundColor: item.color }}
                           />
-                          <span className="text-sm text-zinc-300">{item.name}</span>
+                          <span className="text-zinc-300 font-medium">{item.name}</span>
                         </div>
-                        <div className="text-right">
-                          <span className="text-sm font-medium text-white">
+                        <div className="flex items-center gap-3">
+                          <span className="text-zinc-400">{percentage.toFixed(1)}%</span>
+                          <span className="font-medium text-white w-28 text-right">
                             {formatCurrency(item.value)}
-                          </span>
-                          <span className="text-xs text-zinc-500 ml-2">
-                            ({percentage.toFixed(1)}%)
                           </span>
                         </div>
                       </div>
-                    );
-                  })}
+                      <div className="h-4 bg-zinc-800 rounded-full overflow-hidden">
+                        <div
+                          className="h-full rounded-full transition-all duration-500"
+                          style={{ 
+                            width: `${barWidth}%`,
+                            backgroundColor: item.color 
+                          }}
+                        />
+                      </div>
+                    </div>
+                  );
+                })}
+
+                {/* Total Summary */}
+                <div className="mt-6 pt-4 border-t border-zinc-700">
+                  <div className="flex items-center justify-between">
+                    <span className="text-zinc-300 font-medium">Total Volume</span>
+                    <span className="text-xl font-bold text-white">
+                      {formatCurrency(totalAllocationVolume)}
+                    </span>
+                  </div>
                 </div>
-              </>
+              </div>
             ) : (
               <div className="h-[250px] flex items-center justify-center text-zinc-500">
                 No trading data available

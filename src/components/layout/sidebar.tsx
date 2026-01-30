@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import {
@@ -14,7 +15,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Activity,
-  PieChart,
+  Wallet,
 } from "lucide-react";
 
 const navItems = [
@@ -41,7 +42,7 @@ const navItems = [
   {
     title: "Portfolio",
     href: "/portfolio",
-    icon: PieChart,
+    icon: Wallet,
   },
   {
     title: "Fees",
@@ -71,23 +72,44 @@ export function Sidebar() {
         <div className="flex items-center justify-between h-16 px-4 border-b border-white/5">
           {!collapsed && (
             <Link href="/" className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-emerald-500 to-cyan-500 flex items-center justify-center">
-                <TrendingUp className="w-5 h-5 text-white" />
-              </div>
+              <Image
+                src="/deriverse-logo.svg"
+                alt="Deriverse"
+                width={32}
+                height={32}
+                className="rounded-lg"
+              />
               <span className="font-bold text-white text-lg">Deriverse</span>
             </Link>
           )}
-          <button
-            onClick={() => setCollapsed(!collapsed)}
-            className="p-2 rounded-lg hover:bg-zinc-800 text-zinc-400 hover:text-white transition-colors"
-          >
-            {collapsed ? (
-              <ChevronRight className="w-4 h-4" />
-            ) : (
+          {collapsed && (
+            <Link href="/" className="mx-auto">
+              <Image
+                src="/deriverse-logo.svg"
+                alt="Deriverse"
+                width={32}
+                height={32}
+                className="rounded-lg"
+              />
+            </Link>
+          )}
+          {!collapsed && (
+            <button
+              onClick={() => setCollapsed(!collapsed)}
+              className="p-2 rounded-lg hover:bg-zinc-800 text-zinc-400 hover:text-white transition-colors"
+            >
               <ChevronLeft className="w-4 h-4" />
-            )}
-          </button>
+            </button>
+          )}
         </div>
+        {collapsed && (
+          <button
+            onClick={() => setCollapsed(false)}
+            className="mx-auto mt-2 p-2 rounded-lg hover:bg-zinc-800 text-zinc-400 hover:text-white transition-colors"
+          >
+            <ChevronRight className="w-4 h-4" />
+          </button>
+        )}
 
         {/* Navigation */}
         <nav className="flex-1 py-4 px-2 space-y-1 overflow-y-auto">

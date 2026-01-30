@@ -10,7 +10,6 @@ import { calculateFeeBreakdown, filterTrades } from "@/lib/analytics";
 import { formatCurrency } from "@/lib/utils";
 import { format } from "date-fns";
 import { Activity, TrendingDown, Percent, DollarSign } from "lucide-react";
-import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from "recharts";
 
 export default function FeesPage() {
   const { trades, setTrades, filters } = useTradingStore();
@@ -33,12 +32,14 @@ export default function FeesPage() {
   );
   const feePercentage = totalVolume > 0 ? (feeBreakdown.totalFees / totalVolume) * 100 : 0;
 
-  // Prepare pie chart data
-  const pieData = [
+  // Prepare bar chart data for fee composition
+  const feeData = [
     { name: "Maker Fees", value: feeBreakdown.makerFees, color: "#10B981" },
     { name: "Taker Fees", value: feeBreakdown.takerFees, color: "#F59E0B" },
     { name: "Funding Fees", value: feeBreakdown.fundingFees, color: "#6366F1" },
   ].filter((d) => d.value > 0);
+
+  const maxFee = Math.max(...feeData.map(d => d.value), 1);
 
   // Prepare line chart data
   const feeChartData = feeBreakdown.feesOverTime.map((d) => ({
@@ -96,42 +97,55 @@ export default function FeesPage() {
 
       {/* Fee Breakdown */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Pie Chart */}
+        {/* Horizontal Bar Chart */}
         <Card>
           <CardHeader>
             <CardTitle>Fee Composition</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="h-[300px] w-full">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={pieData}
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={70}
-                    outerRadius={100}
-                    paddingAngle={5}
-                    dataKey="value"
-                    label={({ percent }) => `${((percent ?? 0) * 100).toFixed(1)}%`}
-                    labelLine={false}
-                  >
-                    {pieData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.color} />
-                    ))}
-                  </Pie>
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: "#18181B",
-                      border: "1px solid rgba(255,255,255,0.1)",
-                      borderRadius: "8px",
-                      color: "#fff",
-                    }}
-                    formatter={(value) => [formatCurrency(Number(value)), "Fees"]}
-                  />
-                  <Legend />
-                </PieChart>
-              </ResponsiveContainer>
+            <div className="space-y-4">
+              {feeData.map((fee) => {
+                const percentage = (fee.value / feeBreakdown.totalFees) * 100;
+                const barWidth = (fee.value / maxFee) * 100;
+                return (
+                  <div key={fee.name} className="space-y-2">
+                    <div className="flex items-center justify-between text-sm">
+                      <div className="flex items-center gap-2">
+                        <div 
+                          className="w-3 h-3 rounded-full" 
+                          style={{ backgroundColor: fee.color }}
+                        />
+                        <span className="text-zinc-300">{fee.name}</span>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <span className="text-zinc-400">{percentage.toFixed(1)}%</span>
+                        <span className="font-medium text-white w-24 text-right">
+                          {formatCurrency(fee.value)}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="h-3 bg-zinc-800 rounded-full overflow-hidden">
+                      <div
+                        className="h-full rounded-full transition-all duration-500"
+                        style={{ 
+                          width: `${barWidth}%`,
+                          backgroundColor: fee.color 
+                        }}
+                      />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Total Summary */}
+            <div className="mt-6 pt-4 border-t border-zinc-700">
+              <div className="flex items-center justify-between">
+                <span className="text-zinc-300 font-medium">Total Fees</span>
+                <span className="text-xl font-bold text-white">
+                  {formatCurrency(feeBreakdown.totalFees)}
+                </span>
+              </div>
             </div>
 
             {/* Fee Details */}

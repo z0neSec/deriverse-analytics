@@ -1,23 +1,23 @@
 "use client";
 
-import React from "react";
-import { Wallet, Bell, ExternalLink } from "lucide-react";
-import { Button } from "@/components/ui";
+import React, { useEffect } from "react";
+import { Bell, ExternalLink } from "lucide-react";
+import { useWallet } from "@solana/wallet-adapter-react";
+import { WalletMultiButton } from "@solana/wallet-adapter-react-ui";
 import { useTradingStore } from "@/store";
-import { shortenAddress } from "@/lib/utils";
 
 export function Header() {
-  const { isConnected, walletAddress, setConnected } = useTradingStore();
+  const { connected, publicKey } = useWallet();
+  const { setConnected } = useTradingStore();
 
-  const handleConnect = async () => {
-    // Simulate wallet connection for demo
-    // In production, this would use @solana/wallet-adapter-react
-    setConnected(true, "DemoWallet1234567890abcdefghijklmnopqrstuvwxyz");
-  };
-
-  const handleDisconnect = () => {
-    setConnected(false);
-  };
+  // Sync wallet state with store
+  useEffect(() => {
+    if (connected && publicKey) {
+      setConnected(true, publicKey.toBase58());
+    } else {
+      setConnected(false);
+    }
+  }, [connected, publicKey, setConnected]);
 
   return (
     <header className="fixed top-0 right-0 left-64 z-30 h-16 bg-zinc-950/80 backdrop-blur-md border-b border-white/5">
@@ -52,25 +52,8 @@ export function Header() {
             <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-emerald-500" />
           </button>
 
-          {/* Wallet Connection */}
-          {isConnected && walletAddress ? (
-            <div className="flex items-center gap-2">
-              <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-zinc-800 border border-zinc-700">
-                <div className="w-2 h-2 rounded-full bg-emerald-500" />
-                <span className="text-sm font-medium text-white">
-                  {shortenAddress(walletAddress)}
-                </span>
-              </div>
-              <Button variant="ghost" size="sm" onClick={handleDisconnect}>
-                Disconnect
-              </Button>
-            </div>
-          ) : (
-            <Button onClick={handleConnect}>
-              <Wallet className="w-4 h-4" />
-              Connect Wallet
-            </Button>
-          )}
+          {/* Wallet Connection - Using Solana Wallet Adapter */}
+          <WalletMultiButton className="!bg-emerald-600 hover:!bg-emerald-700 !rounded-lg !h-10 !text-sm !font-medium !transition-colors" />
         </div>
       </div>
     </header>
