@@ -64,11 +64,7 @@ export function Sidebar() {
   const pathname = usePathname();
   const { sidebarCollapsed: collapsed, toggleSidebar } = useUIStore();
   const [mobileOpen, setMobileOpen] = useState(false);
-
-  // Close mobile menu when route changes
-  useEffect(() => {
-    setMobileOpen(false);
-  }, [pathname]);
+  const handleNavigate = () => setMobileOpen(false);
 
   // Close mobile menu on resize to desktop
   useEffect(() => {
@@ -111,7 +107,10 @@ export function Sidebar() {
       <aside
         className={cn(
           "fixed left-0 top-0 z-50 h-screen transition-all duration-300",
-          "bg-slate-950/90 backdrop-blur-xl border-r border-slate-800/50",
+          "bg-gradient-to-b from-slate-900/95 via-slate-950/95 to-slate-950/98",
+          "backdrop-blur-2xl backdrop-saturate-150",
+          "border-r border-slate-700/50",
+          "shadow-[4px_0_24px_rgba(0,0,0,0.3)]",
           // Desktop styles
           "hidden md:block",
           collapsed ? "md:w-16" : "md:w-64",
@@ -119,7 +118,14 @@ export function Sidebar() {
           mobileOpen && "block w-64 md:hidden"
         )}
       >
-      <div className="flex flex-col h-full">
+      {/* Subtle gradient overlay */}
+      <div 
+        className="absolute inset-0 pointer-events-none"
+        style={{
+          background: "linear-gradient(180deg, rgba(59, 130, 246, 0.03) 0%, transparent 30%)",
+        }}
+      />
+      <div className="relative z-10 flex flex-col h-full">
         {/* Logo */}
         <div className="flex items-center justify-between h-16 px-4 border-b border-slate-800/50">
           {/* Mobile close button */}
@@ -131,7 +137,7 @@ export function Sidebar() {
             <X className="w-5 h-5" />
           </button>
           {(!collapsed || mobileOpen) && (
-            <Link href="/" className="flex items-center gap-3">
+            <Link href="/" className="flex items-center gap-3" onClick={handleNavigate}>
               <Image
                 src="/deriverse-logo.svg"
                 alt="Deriverse"
@@ -153,7 +159,7 @@ export function Sidebar() {
             </Link>
           )}
           {collapsed && !mobileOpen && (
-            <Link href="/" className="mx-auto">
+            <Link href="/" className="mx-auto" onClick={handleNavigate}>
               <Image
                 src="/deriverse-logo.svg"
                 alt="Deriverse"
@@ -194,6 +200,7 @@ export function Sidebar() {
               >
                 <Link
                   href={item.href}
+                  onClick={handleNavigate}
                   className={cn(
                     "flex items-center gap-3 px-3 py-2 rounded-lg transition-all duration-200 relative group",
                     isActive
@@ -226,6 +233,7 @@ export function Sidebar() {
         <div className="p-2 border-t border-slate-800/50">
           <Link
             href="/settings"
+            onClick={handleNavigate}
             className={cn(
               "flex items-center gap-3 px-3 py-2 rounded-lg transition-all duration-200",
               "text-slate-500 hover:text-slate-200 hover:bg-slate-800/30"

@@ -123,12 +123,12 @@ export default function DashboardPage() {
       >
         <div>
           <h1 
-            className="text-xl font-medium text-slate-100 tracking-tight"
+            className="text-2xl font-medium tracking-tight bg-gradient-to-r from-slate-100 via-slate-200 to-slate-400 bg-clip-text text-transparent"
             style={{ fontFamily: 'var(--font-instrument)' }}
           >
             Trading Dashboard
           </h1>
-          <p className="text-sm text-slate-500 mt-0.5">
+          <p className="text-sm text-slate-500 mt-1">
             Comprehensive analytics for your Deriverse trading activity
           </p>
         </div>

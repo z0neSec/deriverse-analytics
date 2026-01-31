@@ -87,7 +87,7 @@ export default function JournalPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 
-            className="text-xl font-medium text-slate-100 tracking-tight"
+            className="text-2xl font-medium tracking-tight bg-gradient-to-r from-slate-100 via-slate-200 to-slate-400 bg-clip-text text-transparent"
             style={{ fontFamily: 'var(--font-instrument)' }}
           >
             Trading Journal

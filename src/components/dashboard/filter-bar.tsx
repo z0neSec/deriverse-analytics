@@ -43,19 +43,19 @@ export function FilterBar() {
   };
 
   return (
-    <div className="rounded-xl border border-slate-800/60 bg-slate-900/40 backdrop-blur-sm p-3 md:p-4">
+    <div className="rounded-xl border border-slate-700/50 bg-gradient-to-br from-slate-900/80 via-slate-900/60 to-slate-800/40 backdrop-blur-xl shadow-[0_8px_32px_rgba(0,0,0,0.25)] p-3 md:p-4">
       {/* Main Filter Row */}
       <div className="flex flex-wrap items-center gap-2 md:gap-3">
         {/* Timeframe Selector - Scrollable on mobile */}
         <div className="w-full md:w-auto overflow-x-auto pb-2 md:pb-0 -mx-1 px-1">
-          <div className="flex items-center gap-1 md:gap-2 bg-slate-800/60 rounded-lg p-1 min-w-max">
+          <div className="flex items-center gap-1 md:gap-2 bg-slate-800/70 border border-slate-700/40 rounded-lg p-1 min-w-max">
             {TIMEFRAME_OPTIONS.map((option) => (
               <button
                 key={option.value}
                 onClick={() => setTimeframe(option.value as typeof selectedTimeframe)}
-                className={`px-2 md:px-3 py-1 md:py-1.5 rounded-md text-xs md:text-sm font-medium transition-colors whitespace-nowrap ${
+                className={`px-2 md:px-3 py-1 md:py-1.5 rounded-md text-xs md:text-sm font-medium transition-all whitespace-nowrap ${
                   selectedTimeframe === option.value
-                    ? "bg-slate-200 text-slate-900"
+                    ? "bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md shadow-blue-500/20"
                     : "text-slate-500 hover:text-slate-200 hover:bg-slate-700/50"
                 }`}
               >

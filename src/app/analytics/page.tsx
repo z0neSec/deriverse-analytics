@@ -136,7 +136,7 @@ export default function AnalyticsPage() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 
-            className="text-xl font-medium text-slate-100 tracking-tight"
+            className="text-2xl font-medium tracking-tight bg-gradient-to-r from-slate-100 via-slate-200 to-slate-400 bg-clip-text text-transparent"
             style={{ fontFamily: 'var(--font-instrument)' }}
           >
             Advanced Analytics

@@ -12,9 +12,14 @@ export function Card({ className, children, ...props }: CardProps) {
   return (
     <motion.div
       className={cn(
-        "relative rounded-xl border border-slate-800/60 bg-slate-900/40 backdrop-blur-sm p-6",
-        "shadow-[0_1px_3px_rgba(0,0,0,0.12),0_1px_2px_rgba(0,0,0,0.24)]",
-        "hover:border-slate-700/60 hover:bg-slate-900/50",
+        "relative rounded-xl overflow-hidden",
+        "border border-slate-700/50",
+        "bg-gradient-to-br from-slate-900/80 via-slate-900/60 to-slate-800/40",
+        "backdrop-blur-xl backdrop-saturate-150",
+        "shadow-[0_8px_32px_rgba(0,0,0,0.3),0_0_0_1px_rgba(255,255,255,0.05)_inset]",
+        "hover:border-slate-600/50 hover:shadow-[0_8px_40px_rgba(59,130,246,0.1),0_0_0_1px_rgba(255,255,255,0.08)_inset]",
+        "transition-shadow duration-300",
+        "p-6",
         className
       )}
       initial={{ opacity: 0, y: 8 }}
@@ -26,7 +31,16 @@ export function Card({ className, children, ...props }: CardProps) {
       }}
       {...props}
     >
-      {children}
+      {/* Subtle gradient overlay for glass effect */}
+      <div 
+        className="absolute inset-0 pointer-events-none"
+        style={{
+          background: "linear-gradient(135deg, rgba(255,255,255,0.03) 0%, transparent 50%, rgba(0,0,0,0.05) 100%)",
+        }}
+      />
+      <div className="relative z-10">
+        {children}
+      </div>
     </motion.div>
   );
 }

@@ -16,10 +16,10 @@ export function AnimatedBackground() {
   const containerRef = useRef<HTMLDivElement>(null);
   const [mousePosition, setMousePosition] = useState({ x: 0.5, y: 0.5 });
   const [orbs] = useState<GradientOrb[]>([
-    { id: 1, x: 15, y: 20, size: 400, opacity: 0.03, color: "rgba(100, 100, 120, 1)" },
-    { id: 2, x: 85, y: 15, size: 350, opacity: 0.025, color: "rgba(80, 90, 110, 1)" },
-    { id: 3, x: 50, y: 80, size: 500, opacity: 0.02, color: "rgba(70, 80, 100, 1)" },
-    { id: 4, x: 20, y: 70, size: 300, opacity: 0.015, color: "rgba(90, 95, 115, 1)" },
+    { id: 1, x: 10, y: 10, size: 800, opacity: 0.25, color: "rgba(59, 130, 246, 1)" },
+    { id: 2, x: 90, y: 20, size: 700, opacity: 0.2, color: "rgba(139, 92, 246, 1)" },
+    { id: 3, x: 50, y: 85, size: 900, opacity: 0.18, color: "rgba(6, 182, 212, 1)" },
+    { id: 4, x: 15, y: 75, size: 600, opacity: 0.15, color: "rgba(99, 102, 241, 1)" },
   ]);
 
   useEffect(() => {
@@ -40,7 +40,19 @@ export function AnimatedBackground() {
   return (
     <div ref={containerRef} className="fixed inset-0 z-0 overflow-hidden pointer-events-none">
       {/* Base gradient */}
-      <div className="absolute inset-0 bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950" />
+      <div className="absolute inset-0 bg-[#050a12]" />
+      
+      {/* Layered gradient mesh */}
+      <div 
+        className="absolute inset-0"
+        style={{
+          background: `
+            radial-gradient(ellipse 80% 50% at 50% -20%, rgba(59, 130, 246, 0.2), transparent),
+            radial-gradient(ellipse 60% 40% at 100% 0%, rgba(139, 92, 246, 0.15), transparent),
+            radial-gradient(ellipse 50% 30% at 0% 100%, rgba(6, 182, 212, 0.12), transparent)
+          `,
+        }}
+      />
       
       {/* Subtle noise texture overlay */}
       <div 
@@ -67,6 +79,7 @@ export function AnimatedBackground() {
               background: `radial-gradient(circle, ${orb.color} 0%, transparent 70%)`,
               opacity: orb.opacity,
               transform: `translate(-50%, -50%)`,
+              filter: "blur(60px)",
             }}
             animate={{
               x: parallaxX * (orb.id * 0.3),
@@ -82,35 +95,69 @@ export function AnimatedBackground() {
         );
       })}
 
-      {/* Subtle grid pattern */}
+      {/* Grid pattern - visible */}
       <div 
-        className="absolute inset-0 opacity-[0.02]"
+        className="absolute inset-0"
         style={{
           backgroundImage: `
-            linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
-            linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px)
+            linear-gradient(rgba(148, 163, 184, 0.1) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(148, 163, 184, 0.1) 1px, transparent 1px)
           `,
-          backgroundSize: "80px 80px",
+          backgroundSize: "60px 60px",
+          maskImage: "radial-gradient(ellipse 80% 60% at 50% 50%, black, transparent)",
+          WebkitMaskImage: "radial-gradient(ellipse 80% 60% at 50% 50%, black, transparent)",
+        }}
+      />
+      
+      {/* Dot pattern accent */}
+      <div 
+        className="absolute inset-0"
+        style={{
+          backgroundImage: `radial-gradient(rgba(148, 163, 184, 0.25) 1.5px, transparent 1.5px)`,
+          backgroundSize: "30px 30px",
+          maskImage: "radial-gradient(ellipse 40% 35% at 85% 15%, black, transparent)",
+          WebkitMaskImage: "radial-gradient(ellipse 40% 35% at 85% 15%, black, transparent)",
         }}
       />
 
-      {/* Mouse-following subtle gradient */}
+      {/* Mouse-following glow - visible */}
       <motion.div
-        className="absolute w-[600px] h-[600px] rounded-full pointer-events-none"
+        className="absolute w-[700px] h-[700px] rounded-full pointer-events-none"
         style={{
-          background: "radial-gradient(circle, rgba(100, 110, 130, 0.04) 0%, transparent 60%)",
+          background: "radial-gradient(circle, rgba(59, 130, 246, 0.18) 0%, rgba(139, 92, 246, 0.08) 40%, transparent 70%)",
           left: `${mousePosition.x * 100}%`,
           top: `${mousePosition.y * 100}%`,
           transform: "translate(-50%, -50%)",
+          filter: "blur(30px)",
         }}
         animate={{
-          scale: [1, 1.05, 1],
+          scale: [1, 1.1, 1],
         }}
         transition={{
           duration: 4,
           repeat: Infinity,
           ease: "easeInOut",
         }}
+      />
+      
+      {/* Horizontal accent lines */}
+      <motion.div
+        className="absolute left-0 right-0 h-px"
+        style={{
+          top: "20%",
+          background: "linear-gradient(90deg, transparent 5%, rgba(148, 163, 184, 0.3) 30%, rgba(148, 163, 184, 0.3) 70%, transparent 95%)",
+        }}
+        animate={{ opacity: [0.5, 1, 0.5] }}
+        transition={{ duration: 6, repeat: Infinity, ease: "easeInOut" }}
+      />
+      <motion.div
+        className="absolute left-0 right-0 h-px"
+        style={{
+          top: "80%",
+          background: "linear-gradient(90deg, transparent 10%, rgba(148, 163, 184, 0.25) 35%, rgba(148, 163, 184, 0.25) 65%, transparent 90%)",
+        }}
+        animate={{ opacity: [0.4, 0.8, 0.4] }}
+        transition={{ duration: 8, repeat: Infinity, ease: "easeInOut", delay: 2 }}
       />
 
       {/* Vignette effect */}

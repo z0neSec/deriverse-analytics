@@ -42,7 +42,7 @@ export function Header() {
 
   return (
     <motion.header 
-      className="fixed top-0 right-0 z-30 h-16 bg-slate-950/80 backdrop-blur-xl border-b border-slate-800/50"
+      className="fixed top-0 right-0 z-30 h-16 bg-gradient-to-r from-slate-900/90 via-slate-950/80 to-slate-900/90 backdrop-blur-xl backdrop-saturate-150 border-b border-slate-700/40 shadow-[0_4px_24px_rgba(0,0,0,0.2)]"
       initial={false}
       animate={{
         left: leftPosition,

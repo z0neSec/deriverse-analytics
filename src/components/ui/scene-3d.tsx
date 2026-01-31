@@ -1,114 +1,76 @@
 "use client";
 
-import React, { useRef } from "react";
+import React, { useRef, useMemo } from "react";
 import { Canvas, useFrame } from "@react-three/fiber";
-import { Float } from "@react-three/drei";
 import * as THREE from "three";
 
-function GeometricShape({ position, rotation, scale, color }: { 
-  position: [number, number, number];
-  rotation: [number, number, number];
-  scale: number;
-  color: string;
+const createSeededRandom = (seed: number) => {
+  let t = seed;
+  return () => {
+    t += 0x6d2b79f5;
+    let r = Math.imul(t ^ (t >>> 15), 1 | t);
+    r ^= r + Math.imul(r ^ (r >>> 7), 61 | r);
+    return ((r ^ (r >>> 14)) >>> 0) / 4294967296;
+  };
+};
+
+// Floating particles
+function FloatingParticles({ 
+  count = 100,
+  spread = 15
+}: { 
+  count?: number;
+  spread?: number;
 }) {
-  const meshRef = useRef<THREE.Mesh>(null);
+  const pointsRef = useRef<THREE.Points>(null);
+  
+  const particles = useMemo(() => {
+    const positions = new Float32Array(count * 3);
+    const seed = Math.round(count * 1000 + spread * 100);
+    const random = createSeededRandom(seed);
+
+    for (let i = 0; i < count; i++) {
+      positions[i * 3] = (random() - 0.5) * spread;
+      positions[i * 3 + 1] = (random() - 0.5) * spread;
+      positions[i * 3 + 2] = (random() - 0.5) * spread - 5;
+    }
+    return positions;
+  }, [count, spread]);
 
   useFrame((state) => {
-    if (!meshRef.current) return;
-    meshRef.current.rotation.x = Math.sin(state.clock.elapsedTime * 0.2 + rotation[0]) * 0.1;
-    meshRef.current.rotation.y = Math.sin(state.clock.elapsedTime * 0.15 + rotation[1]) * 0.1;
+    if (!pointsRef.current) return;
+    pointsRef.current.rotation.y = state.clock.elapsedTime * 0.02;
   });
 
   return (
-    <Float speed={1.5} rotationIntensity={0.2} floatIntensity={0.3}>
-      <mesh ref={meshRef} position={position} scale={scale}>
-        <icosahedronGeometry args={[1, 0]} />
-        <meshStandardMaterial
-          color={color}
-          transparent
-          opacity={0.08}
-          wireframe
-          depthWrite={false}
+    <points ref={pointsRef}>
+      <bufferGeometry>
+        <bufferAttribute
+          attach="attributes-position"
+          args={[particles, 3]}
         />
-      </mesh>
-    </Float>
-  );
-}
-
-function TorusShape({ position, scale }: { 
-  position: [number, number, number];
-  scale: number;
-}) {
-  const meshRef = useRef<THREE.Mesh>(null);
-
-  useFrame((state) => {
-    if (!meshRef.current) return;
-    meshRef.current.rotation.x = state.clock.elapsedTime * 0.05;
-    meshRef.current.rotation.y = state.clock.elapsedTime * 0.08;
-  });
-
-  return (
-    <Float speed={0.8} rotationIntensity={0.1} floatIntensity={0.2}>
-      <mesh ref={meshRef} position={position} scale={scale}>
-        <torusGeometry args={[1, 0.3, 16, 32]} />
-        <meshStandardMaterial
-          color="#64748b"
-          transparent
-          opacity={0.05}
-          wireframe
-          depthWrite={false}
-        />
-      </mesh>
-    </Float>
-  );
-}
-
-function Scene() {
-  return (
-    <>
-      <ambientLight intensity={0.5} />
-      <pointLight position={[10, 10, 10]} intensity={0.3} />
-      
-      {/* Geometric shapes positioned around the viewport */}
-      <GeometricShape 
-        position={[-4, 2, -5]} 
-        rotation={[0, 0, 0]} 
-        scale={1.2} 
-        color="#475569"
+      </bufferGeometry>
+      <pointsMaterial
+        color="#60a5fa"
+        size={0.04}
+        transparent
+        opacity={0.8}
+        sizeAttenuation
+        depthWrite={false}
       />
-      <GeometricShape 
-        position={[4, -1.5, -6]} 
-        rotation={[1, 2, 0]} 
-        scale={0.8} 
-        color="#64748b"
-      />
-      <GeometricShape 
-        position={[0, 3, -8]} 
-        rotation={[2, 1, 1]} 
-        scale={1.5} 
-        color="#94a3b8"
-      />
-      <TorusShape 
-        position={[-3, -2, -7]} 
-        scale={0.6}
-      />
-      <TorusShape 
-        position={[3.5, 1.5, -9]} 
-        scale={0.8}
-      />
-    </>
+    </points>
   );
 }
 
 export function Scene3D() {
   return (
-    <div className="fixed inset-0 z-0 pointer-events-none opacity-60">
+    <div className="fixed inset-0 z-[1] pointer-events-none">
       <Canvas
         camera={{ position: [0, 0, 5], fov: 60 }}
         gl={{ antialias: true, alpha: true }}
         style={{ background: "transparent" }}
+        dpr={[1, 2]}
       >
-        <Scene />
       </Canvas>
     </div>
   );
