@@ -4,7 +4,6 @@ import "./globals.css";
 import { Sidebar, Header, MainContent } from "@/components/layout";
 import { WalletContextProvider } from "@/components/providers";
 import { AnimatedBackground } from "@/components/ui";
-import { Scene3DWrapper } from "@/components/ui/scene-3d-wrapper";
 
 // Primary body font - clean, modern, highly legible
 const inter = Inter({
@@ -51,7 +50,6 @@ export default function RootLayout({
       >
         <WalletContextProvider>
           <AnimatedBackground />
-          <Scene3DWrapper />
           <Sidebar />
           <Header />
           <MainContent>{children}</MainContent>

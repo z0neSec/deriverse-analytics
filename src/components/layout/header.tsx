@@ -4,8 +4,14 @@ import React, { useEffect, useSyncExternalStore, useCallback } from "react";
 import { motion } from "framer-motion";
 import { Bell, ExternalLink, Circle } from "lucide-react";
 import { useWallet } from "@solana/wallet-adapter-react";
-import { WalletMultiButton } from "@solana/wallet-adapter-react-ui";
+import dynamic from "next/dynamic";
 import { useTradingStore, useUIStore } from "@/store";
+
+// Dynamically import WalletMultiButton to avoid hydration mismatch
+const WalletMultiButton = dynamic(
+  () => import("@solana/wallet-adapter-react-ui").then((mod) => mod.WalletMultiButton),
+  { ssr: false, loading: () => <div className="h-9 w-24 bg-slate-800 rounded-lg animate-pulse" /> }
+);
 
 function useIsMobile() {
   const subscribe = useCallback((callback: () => void) => {

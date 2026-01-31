@@ -4,8 +4,14 @@ import React from "react";
 import { motion } from "framer-motion";
 import { Wallet, BarChart3 } from "lucide-react";
 import { useWallet } from "@solana/wallet-adapter-react";
-import { WalletMultiButton } from "@solana/wallet-adapter-react-ui";
+import dynamic from "next/dynamic";
 import { Card, CardContent } from "./card";
+
+// Dynamically import WalletMultiButton to avoid hydration mismatch
+const WalletMultiButton = dynamic(
+  () => import("@solana/wallet-adapter-react-ui").then((mod) => mod.WalletMultiButton),
+  { ssr: false, loading: () => <div className="h-11 w-36 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-xl animate-pulse" /> }
+);
 
 interface EmptyStateProps {
   title?: string;
