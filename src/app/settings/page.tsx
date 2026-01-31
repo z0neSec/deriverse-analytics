@@ -30,32 +30,37 @@ export default function SettingsPage() {
     <div className="space-y-6 max-w-4xl">
       {/* Page Header */}
       <div>
-        <h1 className="text-2xl font-bold text-white">Settings</h1>
-        <p className="text-zinc-400 mt-1">Manage your dashboard preferences and connections</p>
+        <h1 
+          className="text-xl font-medium text-slate-100 tracking-tight"
+          style={{ fontFamily: 'var(--font-instrument)' }}
+        >
+          Settings
+        </h1>
+        <p className="text-sm text-slate-500 mt-0.5">Manage your dashboard preferences and connections</p>
       </div>
 
       {/* Wallet Connection */}
       <Card>
         <CardHeader>
           <div className="flex items-center gap-2">
-            <Wallet className="w-5 h-5 text-emerald-400" />
+            <Wallet className="w-5 h-5 text-emerald-500/80\" />
             <CardTitle>Wallet Connection</CardTitle>
           </div>
         </CardHeader>
         <CardContent>
-          <div className="flex items-center justify-between p-4 rounded-lg bg-zinc-800/50 border border-zinc-700">
+          <div className="flex items-center justify-between p-4 rounded-lg bg-slate-800/40 border border-slate-700/50">
             <div className="flex items-center gap-3">
               <div
                 className={`w-3 h-3 rounded-full ${
-                  isConnected ? "bg-emerald-500" : "bg-zinc-500"
+                  isConnected ? "bg-emerald-500" : "bg-slate-500"
                 }`}
               />
               <div>
-                <p className="font-medium text-white">
+                <p className="font-medium text-slate-200">
                   {isConnected ? "Connected" : "Not Connected"}
                 </p>
                 {walletAddress && (
-                  <p className="text-sm text-zinc-400 font-mono">
+                  <p className="text-sm text-slate-500 font-mono">
                     {walletAddress.slice(0, 8)}...{walletAddress.slice(-8)}
                   </p>
                 )}
@@ -66,8 +71,8 @@ export default function SettingsPage() {
             </Badge>
           </div>
 
-          <div className="mt-4 p-4 rounded-lg bg-amber-900/20 border border-amber-500/30">
-            <p className="text-sm text-amber-400">
+          <div className="mt-4 p-4 rounded-lg bg-amber-950/30 border border-amber-800/30">
+            <p className="text-sm text-amber-500/90">
               <strong>Note:</strong> This dashboard is currently configured for Solana Devnet.
               Connect a devnet wallet to sync live trading data from Deriverse.
             </p>
@@ -79,7 +84,7 @@ export default function SettingsPage() {
       <Card>
         <CardHeader>
           <div className="flex items-center gap-2">
-            <Shield className="w-5 h-5 text-blue-400" />
+            <Shield className="w-5 h-5 text-blue-500/80" />
             <CardTitle>Network Configuration</CardTitle>
           </div>
         </CardHeader>
@@ -87,24 +92,24 @@ export default function SettingsPage() {
           <div className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm text-zinc-400 mb-1">Network</label>
-                <p className="text-white font-medium">Solana Devnet</p>
+                <label className="block text-[10px] text-slate-500 mb-1 uppercase tracking-wider">Network</label>
+                <p className="text-slate-200 font-medium">Solana Devnet</p>
               </div>
               <div>
-                <label className="block text-sm text-zinc-400 mb-1">Program ID</label>
-                <p className="text-white font-mono text-sm">
+                <label className="block text-[10px] text-slate-500 mb-1 uppercase tracking-wider">Program ID</label>
+                <p className="text-slate-200 font-mono text-sm">
                   Drvrseg8...27Gu
                 </p>
               </div>
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm text-zinc-400 mb-1">RPC Endpoint</label>
-                <p className="text-white text-sm">https://api.devnet.solana.com</p>
+                <label className="block text-[10px] text-slate-500 mb-1 uppercase tracking-wider">RPC Endpoint</label>
+                <p className="text-slate-200 text-sm">https://api.devnet.solana.com</p>
               </div>
               <div>
-                <label className="block text-sm text-zinc-400 mb-1">SDK Version</label>
-                <p className="text-white font-medium">@deriverse/kit v1.0.39</p>
+                <label className="block text-[10px] text-slate-500 mb-1 uppercase tracking-wider">SDK Version</label>
+                <p className="text-slate-200 font-medium">@deriverse/kit v1.0.39</p>
               </div>
             </div>
           </div>
@@ -115,16 +120,16 @@ export default function SettingsPage() {
       <Card>
         <CardHeader>
           <div className="flex items-center gap-2">
-            <Database className="w-5 h-5 text-purple-400" />
+            <Database className="w-5 h-5 text-purple-500/80" />
             <CardTitle>Data Management</CardTitle>
           </div>
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
-            <div className="flex items-center justify-between p-4 rounded-lg bg-zinc-800/50">
+            <div className="flex items-center justify-between p-4 rounded-lg bg-slate-800/40">
               <div>
-                <p className="font-medium text-white">Local Storage</p>
-                <p className="text-sm text-zinc-400">
+                <p className="font-medium text-slate-200">Local Storage</p>
+                <p className="text-sm text-slate-500">
                   {trades.length} trades • {journalEntries.length} journal entries
                 </p>
               </div>
@@ -134,10 +139,10 @@ export default function SettingsPage() {
               </Button>
             </div>
 
-            <div className="flex items-center justify-between p-4 rounded-lg bg-red-900/20 border border-red-500/30">
+            <div className="flex items-center justify-between p-4 rounded-lg bg-rose-950/30 border border-rose-800/30">
               <div>
-                <p className="font-medium text-white">Clear All Data</p>
-                <p className="text-sm text-zinc-400">
+                <p className="font-medium text-slate-200">Clear All Data</p>
+                <p className="text-sm text-slate-500">
                   Remove all trades, positions, and journal entries
                 </p>
               </div>
@@ -154,43 +159,43 @@ export default function SettingsPage() {
       <Card>
         <CardHeader>
           <div className="flex items-center gap-2">
-            <Bell className="w-5 h-5 text-amber-400" />
+            <Bell className="w-5 h-5 text-amber-500/80" />
             <CardTitle>Notifications</CardTitle>
           </div>
         </CardHeader>
         <CardContent>
           <div className="space-y-3">
-            <label className="flex items-center justify-between p-3 rounded-lg bg-zinc-800/50 cursor-pointer">
+            <label className="flex items-center justify-between p-3 rounded-lg bg-slate-800/40 cursor-pointer">
               <div>
-                <p className="font-medium text-white">Trade Alerts</p>
-                <p className="text-sm text-zinc-400">Get notified when trades are executed</p>
+                <p className="font-medium text-slate-200">Trade Alerts</p>
+                <p className="text-sm text-slate-500">Get notified when trades are executed</p>
               </div>
               <input
                 type="checkbox"
                 defaultChecked
-                className="w-5 h-5 rounded border-zinc-600 bg-zinc-800 text-emerald-500 focus:ring-emerald-500"
+                className="w-5 h-5 rounded border-slate-600 bg-slate-800 text-emerald-500 focus:ring-emerald-500"
               />
             </label>
-            <label className="flex items-center justify-between p-3 rounded-lg bg-zinc-800/50 cursor-pointer">
+            <label className="flex items-center justify-between p-3 rounded-lg bg-slate-800/40 cursor-pointer">
               <div>
-                <p className="font-medium text-white">PnL Alerts</p>
-                <p className="text-sm text-zinc-400">Daily PnL summary notifications</p>
+                <p className="font-medium text-slate-200">PnL Alerts</p>
+                <p className="text-sm text-slate-500">Daily PnL summary notifications</p>
               </div>
               <input
                 type="checkbox"
                 defaultChecked
-                className="w-5 h-5 rounded border-zinc-600 bg-zinc-800 text-emerald-500 focus:ring-emerald-500"
+                className="w-5 h-5 rounded border-slate-600 bg-slate-800 text-emerald-500 focus:ring-emerald-500"
               />
             </label>
-            <label className="flex items-center justify-between p-3 rounded-lg bg-zinc-800/50 cursor-pointer">
+            <label className="flex items-center justify-between p-3 rounded-lg bg-slate-800/40 cursor-pointer">
               <div>
-                <p className="font-medium text-white">Liquidation Warnings</p>
-                <p className="text-sm text-zinc-400">Alert when positions approach liquidation</p>
+                <p className="font-medium text-slate-200">Liquidation Warnings</p>
+                <p className="text-sm text-slate-500">Alert when positions approach liquidation</p>
               </div>
               <input
                 type="checkbox"
                 defaultChecked
-                className="w-5 h-5 rounded border-zinc-600 bg-zinc-800 text-emerald-500 focus:ring-emerald-500"
+                className="w-5 h-5 rounded border-slate-600 bg-slate-800 text-emerald-500 focus:ring-emerald-500"
               />
             </label>
           </div>

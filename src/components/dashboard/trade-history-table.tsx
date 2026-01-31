@@ -153,7 +153,7 @@ export function TradeHistoryTable({ trades }: TradeHistoryTableProps) {
               href={`https://explorer.solana.com/tx/${info.row.original.txSignature}?cluster=devnet`}
               target="_blank"
               rel="noopener noreferrer"
-              className="text-zinc-400 hover:text-white transition-colors"
+              className="text-slate-500 hover:text-slate-300 transition-colors"
             >
               <ExternalLink className="w-4 h-4" />
             </a>

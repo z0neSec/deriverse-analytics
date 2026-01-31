@@ -6,6 +6,7 @@ import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
+import { useUIStore } from "@/store";
 import {
   LayoutDashboard,
   TrendingUp,
@@ -61,7 +62,7 @@ const navItems = [
 
 export function Sidebar() {
   const pathname = usePathname();
-  const [collapsed, setCollapsed] = useState(false);
+  const { sidebarCollapsed: collapsed, toggleSidebar } = useUIStore();
   const [mobileOpen, setMobileOpen] = useState(false);
 
   // Close mobile menu when route changes
@@ -164,7 +165,7 @@ export function Sidebar() {
           )}
           {!collapsed && !mobileOpen && (
             <button
-              onClick={() => setCollapsed(!collapsed)}
+              onClick={toggleSidebar}
               className="p-1.5 rounded-md hover:bg-slate-800/50 text-slate-500 hover:text-slate-300 transition-colors hidden md:block"
             >
               <ChevronLeft className="w-4 h-4" />
@@ -173,7 +174,7 @@ export function Sidebar() {
         </div>
         {collapsed && !mobileOpen && (
           <button
-            onClick={() => setCollapsed(false)}
+            onClick={toggleSidebar}
             className="mx-auto mt-3 p-1.5 rounded-md hover:bg-slate-800/50 text-slate-500 hover:text-slate-300 transition-colors hidden md:block"
           >
             <ChevronRight className="w-4 h-4" />

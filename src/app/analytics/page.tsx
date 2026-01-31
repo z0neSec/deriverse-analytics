@@ -135,8 +135,13 @@ export default function AnalyticsPage() {
       {/* Page Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-white">Advanced Analytics</h1>
-          <p className="text-zinc-400 mt-1">
+          <h1 
+            className="text-xl font-medium text-slate-100 tracking-tight"
+            style={{ fontFamily: 'var(--font-instrument)' }}
+          >
+            Advanced Analytics
+          </h1>
+          <p className="text-sm text-slate-500 mt-0.5">
             Deep insights and advanced metrics for your trading performance
           </p>
         </div>

@@ -49,8 +49,13 @@ export default function PortfolioPage() {
     <div className="space-y-6">
       {/* Page Header */}
       <div>
-        <h1 className="text-2xl font-bold text-white">Portfolio Overview</h1>
-        <p className="text-zinc-400 mt-1">
+        <h1 
+          className="text-xl font-medium text-slate-100 tracking-tight"
+          style={{ fontFamily: 'var(--font-instrument)' }}
+        >
+          Portfolio Overview
+        </h1>
+        <p className="text-sm text-slate-500 mt-0.5">
           Track your overall portfolio performance and allocation
         </p>
       </div>

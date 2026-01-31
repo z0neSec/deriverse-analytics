@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Inter, Instrument_Serif, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
-import { Sidebar, Header } from "@/components/layout";
+import { Sidebar, Header, MainContent } from "@/components/layout";
 import { WalletContextProvider } from "@/components/providers";
 import { AnimatedBackground } from "@/components/ui";
 import { Scene3DWrapper } from "@/components/ui/scene-3d-wrapper";
@@ -54,10 +54,7 @@ export default function RootLayout({
           <Scene3DWrapper />
           <Sidebar />
           <Header />
-          {/* Mobile: no left margin, Desktop: margin for sidebar */}
-          <main className="md:ml-64 pt-16 min-h-screen relative z-10">
-            <div className="p-4 md:p-6">{children}</div>
-          </main>
+          <MainContent>{children}</MainContent>
         </WalletContextProvider>
       </body>
     </html>

@@ -1,15 +1,32 @@
 "use client";
 
-import React, { useEffect } from "react";
+import React, { useEffect, useSyncExternalStore, useCallback } from "react";
 import { motion } from "framer-motion";
 import { Bell, ExternalLink, Circle } from "lucide-react";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { WalletMultiButton } from "@solana/wallet-adapter-react-ui";
-import { useTradingStore } from "@/store";
+import { useTradingStore, useUIStore } from "@/store";
+
+function useIsMobile() {
+  const subscribe = useCallback((callback: () => void) => {
+    window.addEventListener("resize", callback);
+    return () => window.removeEventListener("resize", callback);
+  }, []);
+  
+  const getSnapshot = useCallback(() => {
+    return window.innerWidth < 768;
+  }, []);
+  
+  const getServerSnapshot = useCallback(() => false, []);
+  
+  return useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
+}
 
 export function Header() {
   const { connected, publicKey } = useWallet();
   const { setConnected } = useTradingStore();
+  const { sidebarCollapsed } = useUIStore();
+  const isMobile = useIsMobile();
 
   // Sync wallet state with store
   useEffect(() => {
@@ -20,8 +37,21 @@ export function Header() {
     }
   }, [connected, publicKey, setConnected]);
 
+  // On mobile, start from left edge. On desktop, margin based on sidebar state
+  const leftPosition = isMobile ? 0 : sidebarCollapsed ? "4rem" : "16rem";
+
   return (
-    <header className="fixed top-0 right-0 left-0 md:left-64 z-30 h-16 bg-slate-950/80 backdrop-blur-xl border-b border-slate-800/50">
+    <motion.header 
+      className="fixed top-0 right-0 z-30 h-16 bg-slate-950/80 backdrop-blur-xl border-b border-slate-800/50"
+      initial={false}
+      animate={{
+        left: leftPosition,
+      }}
+      transition={{
+        duration: 0.3,
+        ease: [0.25, 0.1, 0.25, 1],
+      }}
+    >
       <div className="flex items-center justify-between h-full px-4 md:px-6">
         {/* Left Section - Hidden on mobile to make room for hamburger menu */}
         <div className="hidden md:flex items-center gap-6">
@@ -37,18 +67,7 @@ export function Header() {
               Devnet
             </motion.span>
           </div>
-          
-          {/* Separator */}
-          <div className="h-4 w-px bg-slate-800" />
-          
-          {/* Status indicator */}
-          <div className="flex items-center gap-2">
-            <span className="text-[11px] text-slate-500 uppercase tracking-widest font-medium">Status</span>
-            <span className="flex items-center gap-1.5 text-xs font-medium text-emerald-500/80">
-              <Circle className="w-1.5 h-1.5 fill-current" />
-              Operational
-            </span>
-          </div>
+      
         </div>
 
         {/* Mobile Spacer for hamburger button */}
@@ -86,6 +105,6 @@ export function Header() {
           <WalletMultiButton className="!bg-slate-800 hover:!bg-slate-700 !border !border-slate-700 hover:!border-slate-600 !rounded-lg !h-9 md:!h-9 !text-xs !font-medium !transition-all !px-3 md:!px-4 !text-slate-300" />
         </div>
       </div>
-    </header>
+    </motion.header>
   );
 }

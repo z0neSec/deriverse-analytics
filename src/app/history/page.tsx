@@ -32,8 +32,13 @@ export default function HistoryPage() {
       {/* Page Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-white">Trade History</h1>
-          <p className="text-zinc-400 mt-1">
+          <h1 
+            className="text-xl font-medium text-slate-100 tracking-tight"
+            style={{ fontFamily: 'var(--font-instrument)' }}
+          >
+            Trade History
+          </h1>
+          <p className="text-sm text-slate-500 mt-0.5">
             Complete history of all your trades with detailed information
           </p>
         </div>
@@ -104,33 +109,33 @@ export default function HistoryPage() {
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-                <div className="p-3 rounded-lg bg-zinc-800/50">
-                  <p className="text-xs text-zinc-400 mb-1">Spot Trades</p>
-                  <p className="text-lg font-bold text-white">
+                <div className="p-3 rounded-lg bg-slate-800/40">
+                  <p className="text-[10px] text-slate-500 mb-1 uppercase tracking-wider">Spot Trades</p>
+                  <p className="text-lg font-semibold text-slate-200 tabular-nums" style={{ fontFamily: 'var(--font-jetbrains)' }}>
                     {filteredTrades.filter((t) => t.marketType === "spot").length}
                   </p>
                 </div>
-                <div className="p-3 rounded-lg bg-zinc-800/50">
-                  <p className="text-xs text-zinc-400 mb-1">Perp Trades</p>
-                  <p className="text-lg font-bold text-white">
+                <div className="p-3 rounded-lg bg-slate-800/40">
+                  <p className="text-[10px] text-slate-500 mb-1 uppercase tracking-wider">Perp Trades</p>
+                  <p className="text-lg font-semibold text-slate-200 tabular-nums" style={{ fontFamily: 'var(--font-jetbrains)' }}>
                     {filteredTrades.filter((t) => t.marketType === "perpetual").length}
                   </p>
                 </div>
-                <div className="p-3 rounded-lg bg-zinc-800/50">
-                  <p className="text-xs text-zinc-400 mb-1">Long Trades</p>
-                  <p className="text-lg font-bold text-emerald-400">
+                <div className="p-3 rounded-lg bg-slate-800/40">
+                  <p className="text-[10px] text-slate-500 mb-1 uppercase tracking-wider">Long Trades</p>
+                  <p className="text-lg font-semibold text-emerald-500/90 tabular-nums" style={{ fontFamily: 'var(--font-jetbrains)' }}>
                     {filteredTrades.filter((t) => t.side === "long").length}
                   </p>
                 </div>
-                <div className="p-3 rounded-lg bg-zinc-800/50">
-                  <p className="text-xs text-zinc-400 mb-1">Short Trades</p>
-                  <p className="text-lg font-bold text-red-400">
+                <div className="p-3 rounded-lg bg-slate-800/40">
+                  <p className="text-[10px] text-slate-500 mb-1 uppercase tracking-wider">Short Trades</p>
+                  <p className="text-lg font-semibold text-rose-500/90 tabular-nums" style={{ fontFamily: 'var(--font-jetbrains)' }}>
                     {filteredTrades.filter((t) => t.side === "short").length}
                   </p>
                 </div>
-                <div className="p-3 rounded-lg bg-zinc-800/50">
-                  <p className="text-xs text-zinc-400 mb-1">Avg Trade Size</p>
-                  <p className="text-lg font-bold text-white">
+                <div className="p-3 rounded-lg bg-slate-800/40">
+                  <p className="text-[10px] text-slate-500 mb-1 uppercase tracking-wider">Avg Trade Size</p>
+                  <p className="text-lg font-semibold text-slate-200 tabular-nums" style={{ fontFamily: 'var(--font-jetbrains)' }}>
                     {formatCurrency(
                       filteredTrades.length > 0
                         ? filteredTrades.reduce((sum, t) => sum + t.entryPrice * t.quantity, 0) / filteredTrades.length
