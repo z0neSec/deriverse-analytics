@@ -155,7 +155,7 @@ This project was built for the **Deriverse Hackathon** with the goal of creating
 - [x] Largest gain/loss tracking
 - [x] Symbol filtering
 - [x] Date range selection
-- [x] Historical PnL chart
+- [x] Historical PnL charts
 - [x] Drawdown visualization
 - [x] Time-based performance metrics
 - [x] Trade history with annotations
