@@ -53,11 +53,11 @@ const itemVariants = {
 };
 
 export default function DashboardPage() {
-  const {
-    trades,
-    positions,
-    filters,
-  } = useTradingStore();
+  // Use individual selectors for better reactivity
+  const trades = useTradingStore((state) => state.trades);
+  const positions = useTradingStore((state) => state.positions);
+  const filters = useTradingStore((state) => state.filters);
+  const isConnected = useTradingStore((state) => state.isConnected);
 
   // Apply filters and recalculate metrics
   const filteredTrades = useMemo(() => filterTrades(trades, filters), [trades, filters]);
@@ -165,13 +165,20 @@ export default function DashboardPage() {
         <FilterBar />
       </motion.div>
 
-      {/* Show empty state if no trades */}
-      {trades.length === 0 ? (
-        <motion.div variants={itemVariants}>
-          <EmptyState />
+      {/* Show empty state if not connected or no trades */}
+      {!isConnected || trades.length === 0 ? (
+        <motion.div variants={itemVariants} key={`empty-${isConnected}`}>
+          <EmptyState 
+            title={!isConnected ? "Connect Your Wallet" : "No Trading Data"}
+            description={!isConnected 
+              ? "Connect your Solana wallet to view your Deriverse trading analytics"
+              : "No trading history found on Deriverse for this wallet"
+            }
+            showConnectWallet={!isConnected}
+          />
         </motion.div>
       ) : (
-        <>
+        <React.Fragment key={`dashboard-${trades.length}`}>
           {/* Key Metrics Grid */}
           <motion.div variants={itemVariants}>
             <MetricsGrid metrics={metrics} />
@@ -214,7 +221,7 @@ export default function DashboardPage() {
           <motion.div variants={itemVariants}>
             <TradeHistoryTable trades={filteredTrades} />
           </motion.div>
-        </>
+        </React.Fragment>
       )}
     </motion.div>
   );

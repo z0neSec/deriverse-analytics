@@ -110,6 +110,8 @@ export const useTradingStore = create<TradingState>()(
         set({
           isConnected: connected,
           walletAddress: address || null,
+          // Clear trading data when disconnecting to ensure fresh state
+          ...(connected ? {} : { trades: [], positions: [], metrics: null, dailyPerformance: [] }),
         }),
 
       setClientId: (clientId) => set({ clientId }),
@@ -169,19 +171,28 @@ export const useTradingStore = create<TradingState>()(
         set({
           trades: [],
           positions: [],
-          metrics: defaultMetrics,
+          metrics: null,
           dailyPerformance: [],
-          journalEntries: [],
+          isConnected: false,
+          walletAddress: null,
         }),
     }),
     {
       name: "deriverse-trading-store",
+      // Only persist journal entries, filters, and timeframe - NOT trades/positions
+      // Trades and positions should be fetched fresh on each wallet connection
       partialize: (state) => ({
-        trades: state.trades,
         journalEntries: state.journalEntries,
         filters: state.filters,
         selectedTimeframe: state.selectedTimeframe,
       }),
+      // Skip hydration to avoid SSR mismatch issues
+      skipHydration: true,
     }
   )
 );
+
+// Hydrate on client side only
+if (typeof window !== 'undefined') {
+  useTradingStore.persist.rehydrate();
+}

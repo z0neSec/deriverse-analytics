@@ -1,17 +1,13 @@
 "use client";
 
-import React, { useMemo, useEffect, useCallback, useState } from "react";
+import React, { useMemo, useEffect, useCallback, useState, useRef } from "react";
+import { useRouter, usePathname } from "next/navigation";
 import {
   ConnectionProvider,
   WalletProvider,
   useWallet,
 } from "@solana/wallet-adapter-react";
 import { WalletModalProvider } from "@solana/wallet-adapter-react-ui";
-import {
-  PhantomWalletAdapter,
-  SolflareWalletAdapter,
-  TorusWalletAdapter,
-} from "@solana/wallet-adapter-wallets";
 import { clusterApiUrl } from "@solana/web3.js";
 import { deriverseService } from "@/lib/deriverse-service";
 import { useTradingStore } from "@/store";
@@ -23,31 +19,47 @@ interface WalletContextProviderProps {
   children: React.ReactNode;
 }
 
+// Deriverse-style loading component
+function DeriverseLoader() {
+  return (
+    <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-black">
+      <span className="text-slate-400 text-sm tracking-wide mb-3">Loading</span>
+      <div className="flex gap-1">
+        <div className="w-1.5 h-2.5 rounded-full bg-purple-500 animate-bounce" style={{ animationDelay: '0ms' }} />
+        <div className="w-1.5 h-2.5 rounded-full bg-purple-500 animate-bounce" style={{ animationDelay: '150ms' }} />
+        <div className="w-1.5 h-2.5 rounded-full bg-purple-500 animate-bounce" style={{ animationDelay: '300ms' }} />
+        <div className="w-1.5 h-2.5 rounded-full bg-purple-500 animate-bounce" style={{ animationDelay: '450ms' }} />
+      </div>
+    </div>
+  );
+}
+
 // Inner component to handle wallet state changes
 function WalletStateHandler({ children }: { children: React.ReactNode }) {
+  const router = useRouter();
+  const pathname = usePathname();
   const { connected, publicKey } = useWallet();
-  const { setTrades, setPositions, setConnected } = useTradingStore();
+  const setTrades = useTradingStore((state) => state.setTrades);
+  const setPositions = useTradingStore((state) => state.setPositions);
+  const setConnected = useTradingStore((state) => state.setConnected);
+  const clearData = useTradingStore((state) => state.clearData);
+  
   const [isLoading, setIsLoading] = useState(false);
-  const [sdkInitialized, setSdkInitialized] = useState(false);
+  const prevConnectedRef = useRef<boolean>(false);
+  const prevAddressRef = useRef<string | null>(null);
+  const hasInitializedRef = useRef(false);
 
   // Initialize Deriverse SDK on mount
   useEffect(() => {
-    const initSDK = async () => {
-      const success = await deriverseService.initialize();
-      setSdkInitialized(success);
-    };
-    initSDK();
+    deriverseService.initialize();
   }, []);
 
   // Fetch live data when wallet connects
   const fetchLiveData = useCallback(async (walletAddress: string) => {
     setIsLoading(true);
     try {
-      // Try to set wallet and fetch live data
       const hasActivity = await deriverseService.setWallet(walletAddress);
       
-      // Always try to fetch trading history - even if hasActivity is false,
-      // we want to scan for any Deriverse transactions
       const [trades, positions] = await Promise.all([
         deriverseService.getTradingHistory(),
         deriverseService.getPositions(),
@@ -55,20 +67,15 @@ function WalletStateHandler({ children }: { children: React.ReactNode }) {
 
       console.log(`Loaded ${trades.length} trades and ${positions.length} positions from Deriverse`);
       
-      if (trades.length > 0 || hasActivity) {
-        setTrades(trades);
-        setPositions(positions);
-      } else {
-        // No Deriverse activity for this wallet - show empty state
-        console.log("No Deriverse trading activity found for this wallet");
-        setTrades([]);
-        setPositions([]);
-      }
+      setTrades(trades.length > 0 ? trades : []);
+      setPositions(positions.length > 0 ? positions : []);
+      
+      return { trades, positions, hasActivity };
     } catch (error) {
       console.warn("Failed to fetch live data:", error);
-      // Clear data on error
       setTrades([]);
       setPositions([]);
+      return { trades: [], positions: [], hasActivity: false };
     } finally {
       setIsLoading(false);
     }
@@ -76,28 +83,61 @@ function WalletStateHandler({ children }: { children: React.ReactNode }) {
 
   // Handle wallet connection state changes
   useEffect(() => {
-    if (connected && publicKey) {
-      setConnected(true, publicKey.toBase58());
-      // Always try to fetch data when wallet connects
-      fetchLiveData(publicKey.toBase58());
-    } else {
-      setConnected(false);
-      // Clear data when wallet disconnects
-      setTrades([]);
-      setPositions([]);
+    const currentAddress = publicKey?.toBase58() || null;
+    const wasConnected = prevConnectedRef.current;
+    const prevAddress = prevAddressRef.current;
+    
+    // Skip on initial mount to avoid unnecessary actions
+    if (!hasInitializedRef.current) {
+      hasInitializedRef.current = true;
+      prevConnectedRef.current = connected;
+      prevAddressRef.current = currentAddress;
+      if (connected && currentAddress) {
+        setConnected(true, currentAddress);
+        fetchLiveData(currentAddress);
+      }
+      return;
     }
-  }, [connected, publicKey, setConnected, fetchLiveData, setTrades, setPositions]);
+    
+    console.log('[WalletProvider] State check:', { 
+      connected, 
+      wasConnected,
+      currentAddress,
+      prevAddress,
+    });
+    
+    // Wallet just connected
+    if (connected && publicKey && (!wasConnected || prevAddress !== currentAddress)) {
+      console.log('[WalletProvider] Wallet connected, fetching data and redirecting...');
+      setConnected(true, currentAddress!);
+      
+      // Fetch data then redirect to portfolio
+      fetchLiveData(currentAddress!).then(() => {
+        // Navigate to portfolio page after data loads
+        if (pathname === '/') {
+          router.push('/portfolio');
+        } else {
+          // Refresh current page to update UI
+          router.refresh();
+        }
+      });
+      
+      prevConnectedRef.current = true;
+      prevAddressRef.current = currentAddress;
+    } 
+    // Wallet just disconnected
+    else if (!connected && wasConnected) {
+      console.log('[WalletProvider] Wallet disconnected, clearing state...');
+      setConnected(false);
+      clearData();
+      prevConnectedRef.current = false;
+      prevAddressRef.current = null;
+    }
+  }, [connected, publicKey, setConnected, fetchLiveData, clearData, router, pathname]);
 
   return (
     <>
-      {isLoading && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <div className="bg-zinc-900 rounded-xl p-6 flex items-center gap-4">
-            <div className="w-6 h-6 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin" />
-            <span className="text-white">Loading trading data from Deriverse...</span>
-          </div>
-        </div>
-      )}
+      {isLoading && <DeriverseLoader />}
       {children}
     </>
   );
@@ -107,14 +147,9 @@ export function WalletContextProvider({ children }: WalletContextProviderProps) 
   // Use devnet for Deriverse
   const endpoint = useMemo(() => clusterApiUrl("devnet"), []);
 
-  const wallets = useMemo(
-    () => [
-      new PhantomWalletAdapter(),
-      new SolflareWalletAdapter(),
-      new TorusWalletAdapter(),
-    ],
-    []
-  );
+  // Use empty wallets array - the StandardWalletAdapter will auto-detect installed wallets
+  // This prevents duplicate entries like "MetaMask" appearing twice
+  const wallets = useMemo(() => [], []);
 
   return (
     <ConnectionProvider endpoint={endpoint}>
