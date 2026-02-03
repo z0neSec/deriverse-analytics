@@ -25,10 +25,10 @@ function DeriverseLoader() {
     <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-black">
       <span className="text-slate-400 text-sm tracking-wide mb-3">Loading</span>
       <div className="flex gap-1">
-        <div className="w-1.5 h-2.5 rounded-full bg-purple-500 animate-bounce" style={{ animationDelay: '0ms' }} />
-        <div className="w-1.5 h-2.5 rounded-full bg-purple-500 animate-bounce" style={{ animationDelay: '150ms' }} />
-        <div className="w-1.5 h-2.5 rounded-full bg-purple-500 animate-bounce" style={{ animationDelay: '300ms' }} />
-        <div className="w-1.5 h-2.5 rounded-full bg-purple-500 animate-bounce" style={{ animationDelay: '450ms' }} />
+        <div className="w-1.5 h-3 rounded-full bg-purple-500 animate-bounce" style={{ animationDelay: '0ms' }} />
+        <div className="w-1.5 h-3 rounded-full bg-purple-500 animate-bounce" style={{ animationDelay: '150ms' }} />
+        <div className="w-1.5 h-3 rounded-full bg-purple-500 animate-bounce" style={{ animationDelay: '300ms' }} />
+        <div className="w-1.5 h-3 rounded-full bg-purple-500 animate-bounce" style={{ animationDelay: '450ms' }} />
       </div>
     </div>
   );
