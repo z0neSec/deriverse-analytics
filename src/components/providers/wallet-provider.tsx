@@ -44,21 +44,23 @@ function WalletStateHandler({ children }: { children: React.ReactNode }) {
     setIsLoading(true);
     try {
       // Try to set wallet and fetch live data
-      const hasClient = await deriverseService.setWallet(walletAddress);
+      const hasActivity = await deriverseService.setWallet(walletAddress);
       
-      if (hasClient) {
-        // Fetch real trading history and positions
-        const [trades, positions] = await Promise.all([
-          deriverseService.getTradingHistory(),
-          deriverseService.getPositions(),
-        ]);
+      // Always try to fetch trading history - even if hasActivity is false,
+      // we want to scan for any Deriverse transactions
+      const [trades, positions] = await Promise.all([
+        deriverseService.getTradingHistory(),
+        deriverseService.getPositions(),
+      ]);
 
-        console.log(`Loaded ${trades.length} trades and ${positions.length} positions from Deriverse`);
+      console.log(`Loaded ${trades.length} trades and ${positions.length} positions from Deriverse`);
+      
+      if (trades.length > 0 || hasActivity) {
         setTrades(trades);
         setPositions(positions);
       } else {
-        // No Deriverse client for this wallet - show empty state
-        console.log("No Deriverse account found for this wallet");
+        // No Deriverse activity for this wallet - show empty state
+        console.log("No Deriverse trading activity found for this wallet");
         setTrades([]);
         setPositions([]);
       }
@@ -76,16 +78,15 @@ function WalletStateHandler({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (connected && publicKey) {
       setConnected(true, publicKey.toBase58());
-      if (sdkInitialized) {
-        fetchLiveData(publicKey.toBase58());
-      }
+      // Always try to fetch data when wallet connects
+      fetchLiveData(publicKey.toBase58());
     } else {
       setConnected(false);
       // Clear data when wallet disconnects
       setTrades([]);
       setPositions([]);
     }
-  }, [connected, publicKey, setConnected, sdkInitialized, fetchLiveData, setTrades, setPositions]);
+  }, [connected, publicKey, setConnected, fetchLiveData, setTrades, setPositions]);
 
   return (
     <>
