@@ -67,26 +67,6 @@ const defaultFilters: FilterOptions = {
   status: [],
 };
 
-const defaultMetrics: PortfolioMetrics = {
-  totalPnl: 0,
-  totalPnlPercentage: 0,
-  totalVolume: 0,
-  totalFees: 0,
-  winRate: 0,
-  totalTrades: 0,
-  winningTrades: 0,
-  losingTrades: 0,
-  averageWin: 0,
-  averageLoss: 0,
-  largestWin: 0,
-  largestLoss: 0,
-  profitFactor: 0,
-  averageTradeDuration: 0,
-  longShortRatio: 0,
-  maxDrawdown: 0,
-  maxDrawdownPercentage: 0,
-};
-
 export const useTradingStore = create<TradingState>()(
   persist(
     (set) => ({

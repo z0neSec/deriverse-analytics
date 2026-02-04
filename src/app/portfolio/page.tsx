@@ -31,13 +31,8 @@ export default function PortfolioPage() {
   const totalAllocationVolume = allocationData.reduce((sum, d) => sum + d.value, 0);
   const maxAllocationValue = Math.max(...allocationData.map(d => d.value), 1);
 
-  // Calculate unrealized PnL from positions
-  const totalUnrealizedPnl = positions.reduce((sum, p) => sum + p.unrealizedPnl, 0);
-  const totalPositionValue = positions.reduce((sum, p) => sum + p.currentPrice * p.quantity, 0);
-
-  // Calculate total portfolio value (simulated)
-  const accountBalance = 10000; // Simulated starting balance
-  const totalValue = accountBalance + metrics.totalPnl + totalUnrealizedPnl;
+  // Calculate total trading volume from trades (we don't have access to wallet balance without SDK)
+  const totalTradingVolume = filteredTrades.reduce((sum, t) => sum + (t.entryPrice * t.quantity), 0);
 
   const pnlChartData = dailyPerformance.map((d) => ({
     date: format(toDate(d.date), "MMM dd"),
@@ -74,30 +69,32 @@ export default function PortfolioPage() {
           {/* Portfolio Value Cards */}
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <StatCard
-              title="Total Portfolio Value"
-              value={formatCurrency(totalValue)}
+              title="Total Trading Volume"
+              value={formatCurrency(totalTradingVolume)}
+              subtitle={`${filteredTrades.length} trades`}
               icon={<Wallet className="w-6 h-6" />}
               className="md:col-span-1"
             />
             <StatCard
               title="Realized PnL"
-              value={formatCurrency(metrics.totalPnl)}
-              trend={metrics.totalPnlPercentage}
+              value={metrics.totalPnl !== 0 ? formatCurrency(metrics.totalPnl) : "N/A"}
+              trend={metrics.totalPnl !== 0 ? metrics.totalPnlPercentage : undefined}
+              subtitle={metrics.totalPnl === 0 ? "Trades still open" : undefined}
               valueClassName={metrics.totalPnl >= 0 ? "text-emerald-400" : "text-red-400"}
               icon={metrics.totalPnl >= 0 ? <TrendingUp className="w-6 h-6" /> : <TrendingDown className="w-6 h-6" />}
             />
             <StatCard
-              title="Unrealized PnL"
-              value={formatCurrency(totalUnrealizedPnl)}
-              subtitle={`${positions.length} open positions`}
-              valueClassName={totalUnrealizedPnl >= 0 ? "text-emerald-400" : "text-red-400"}
-          icon={totalUnrealizedPnl >= 0 ? <TrendingUp className="w-6 h-6" /> : <TrendingDown className="w-6 h-6" />}
-        />
-        <StatCard
-          title="Position Value"
-          value={formatCurrency(totalPositionValue)}
-          icon={<BarChart3 className="w-6 h-6" />}
-        />
+              title="Open Trades"
+              value={`${filteredTrades.filter(t => t.status === 'open').length}`}
+              subtitle="Positions active"
+              valueClassName="text-blue-400"
+              icon={<BarChart3 className="w-6 h-6" />}
+            />
+            <StatCard
+              title="Avg Trade Size"
+              value={formatCurrency(totalTradingVolume / Math.max(filteredTrades.length, 1))}
+              icon={<BarChart3 className="w-6 h-6" />}
+            />
       </div>
 
       {/* Portfolio Allocation & PnL */}

@@ -127,11 +127,14 @@ function WalletStateHandler({ children }: { children: React.ReactNode }) {
     } 
     // Wallet just disconnected
     else if (!connected && wasConnected) {
-      console.log('[WalletProvider] Wallet disconnected, clearing state...');
+      console.log('[WalletProvider] Wallet disconnected, clearing state and refreshing...');
       setConnected(false);
       clearData();
       prevConnectedRef.current = false;
       prevAddressRef.current = null;
+      
+      // Refresh the page on disconnect
+      window.location.reload();
     }
   }, [connected, publicKey, setConnected, fetchLiveData, clearData, router, pathname]);
 
