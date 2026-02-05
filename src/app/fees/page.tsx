@@ -5,15 +5,15 @@ import { useTradingStore } from "@/store";
 import { Card, CardHeader, CardTitle, CardContent, StatCard, EmptyState } from "@/components/ui";
 import { FeeChart } from "@/components/charts";
 import { FilterBar } from "@/components/dashboard";
-import { calculateFeeBreakdown, filterTrades } from "@/lib/analytics";
+import { calculateFeeBreakdown, filterTradesWithTimeframe } from "@/lib/analytics";
 import { formatCurrency, toDate } from "@/lib/utils";
 import { format } from "date-fns";
 import { Activity, TrendingDown, Percent, DollarSign } from "lucide-react";
 
 export default function FeesPage() {
-  const { trades, filters } = useTradingStore();
+  const { trades, filters, selectedTimeframe } = useTradingStore();
 
-  const filteredTrades = useMemo(() => filterTrades(trades, filters), [trades, filters]);
+  const filteredTrades = useMemo(() => filterTradesWithTimeframe(trades, filters, selectedTimeframe), [trades, filters, selectedTimeframe]);
   const feeBreakdown = useMemo(() => calculateFeeBreakdown(filteredTrades), [filteredTrades]);
 
   // Calculate total volume for fee percentage

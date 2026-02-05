@@ -4,7 +4,7 @@ import React, { useMemo } from "react";
 import { useTradingStore } from "@/store";
 import { Card, CardHeader, CardTitle, CardContent, StatCard, EmptyState } from "@/components/ui";
 import { OpenPositions, FilterBar } from "@/components/dashboard";
-import { calculatePortfolioMetrics, calculateSymbolMetrics, filterTrades, generateDailyPerformance } from "@/lib/analytics";
+import { calculatePortfolioMetrics, calculateSymbolMetrics, filterTradesWithTimeframe, generateDailyPerformance } from "@/lib/analytics";
 import { formatCurrency, toDate } from "@/lib/utils";
 import { format } from "date-fns";
 import { PnLChart } from "@/components/charts";
@@ -14,9 +14,9 @@ import { cn } from "@/lib/utils";
 const ALLOCATION_COLORS = ["#10B981", "#3B82F6", "#F59E0B", "#8B5CF6", "#EC4899"];
 
 export default function PortfolioPage() {
-  const { trades, positions, filters } = useTradingStore();
+  const { trades, positions, filters, selectedTimeframe } = useTradingStore();
 
-  const filteredTrades = useMemo(() => filterTrades(trades, filters), [trades, filters]);
+  const filteredTrades = useMemo(() => filterTradesWithTimeframe(trades, filters, selectedTimeframe), [trades, filters, selectedTimeframe]);
   const metrics = useMemo(() => calculatePortfolioMetrics(filteredTrades), [filteredTrades]);
   const symbolMetrics = useMemo(() => calculateSymbolMetrics(filteredTrades), [filteredTrades]);
   const dailyPerformance = useMemo(() => generateDailyPerformance(filteredTrades), [filteredTrades]);

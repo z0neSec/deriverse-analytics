@@ -231,8 +231,15 @@ export class DeriverseService {
           
           deriverseCount++;
 
-          // Parse logs for trade information
-          const parsedTrade = this.parseTransactionLogs(logs, sig.signature, tx.blockTime ?? null, tradeId);
+          // Parse logs for trade information, including balance changes
+          const parsedTrade = this.parseTransactionLogs(
+            logs, 
+            sig.signature, 
+            tx.blockTime ?? null, 
+            tradeId,
+            tx.meta.preBalances,
+            tx.meta.postBalances
+          );
           
           if (parsedTrade) {
             tradeId++;
@@ -254,12 +261,15 @@ export class DeriverseService {
 
   /**
    * Parse transaction logs to extract trade information
+   * Uses Deriverse program data and logs to determine trade direction
    */
   private parseTransactionLogs(
     logs: string[], 
     signature: string, 
     blockTime: number | null,
-    tradeId: number
+    tradeId: number,
+    preBalances?: number[],
+    postBalances?: number[]
   ): Trade | null {
     try {
       // Look for Deriverse program invocation and successful execution
@@ -271,87 +281,127 @@ export class DeriverseService {
         log.includes("Program Drvrseg8AQLP8B96DBGmHRjFGviFNYTkHueY9g3k27Gu success")
       );
       
-      // Debug log
-      console.log(`TX ${signature.slice(0, 8)}... - hasProgram: ${hasProgram}, isSuccess: ${isSuccess}`);
-      if (hasProgram) {
-        console.log("Logs:", logs.filter(l => l.includes("Drvrseg8") || l.includes("Program log") || l.includes("Program data")));
-      }
-      
       if (!hasProgram || !isSuccess) return null;
 
-      // Accept ANY successful Deriverse transaction as trading activity
-      // The program logs are encoded, so we can't easily determine the exact instruction type
-      // We'll treat all successful Deriverse transactions as trades
+      // Debug log filtered
+      const programLogs = logs.filter(l => 
+        l.includes("Drvrseg8") || 
+        l.includes("Program log") || 
+        l.includes("Program data")
+      );
+      console.log(`TX ${signature.slice(0, 8)}... logs:`, programLogs);
 
-      // Determine trade characteristics from logs
-      let side: TradeSide = "long";
-      let marketType: MarketType = "spot";
-      let orderType: OrderType = "market";
-      let instrId = 0;
-
-      // Check for perp-related keywords
-      const logsJoined = logs.join(" ").toLowerCase();
-      if (logsJoined.includes("perp")) marketType = "perpetual";
-      if (logsJoined.includes("ask") || logsJoined.includes("sell") || logsJoined.includes("short")) side = "short";
-      if (logsJoined.includes("limit")) orderType = "limit";
+      // Extract program data (base64 encoded events)
+      const dataLogs = logs.filter(l => l.startsWith("Program data:"));
       
-      // Try to extract instrument ID from logs
-      for (const log of logs) {
-        const instrMatch = log.match(/instr[_\s]?id[:\s]*(\d+)/i);
-        if (instrMatch) instrId = parseInt(instrMatch[1]);
+      // Parse trade side from program data
+      // Based on Deriverse SDK: taker_side 0 = bid (long), 1 = ask (short)
+      // Also: PerpOrderSide.bid = long, PerpOrderSide.ask = short
+      let side: TradeSide = "long"; // Default
+      let marketType: MarketType = "perpetual"; // Deriverse is primarily perp trading
+      let orderType: OrderType = "market";
+      
+      // Try to detect side from program data
+      // The program emits events like PerpTakerTradeLog and FillLogV3 with taker_side
+      for (const dataLog of dataLogs) {
+        try {
+          const base64Data = dataLog.replace("Program data: ", "");
+          const buffer = Buffer.from(base64Data, "base64");
+          
+          // Check for known discriminators and extract taker_side
+          // FillLog/FillLogV3 structure has taker_side at a known offset
+          // For most Deriverse trade events, the side byte is typically at offset 34 or 35
+          // after the 8-byte discriminator + pubkey (32 bytes)
+          if (buffer.length > 40) {
+            // Look for taker_side byte (0 = bid/long, 1 = ask/short)
+            // The position varies by event type, so we check multiple positions
+            const possibleSidePositions = [34, 35, 42, 43, 10, 11];
+            for (const pos of possibleSidePositions) {
+              if (buffer[pos] === 0 || buffer[pos] === 1) {
+                // Verify this looks like a valid side byte by checking nearby bytes
+                // Side should be followed by reasonable data, not all zeros
+                if (buffer.length > pos + 5) {
+                  const nextFewBytes = buffer.slice(pos + 1, pos + 5);
+                  const hasNonZero = nextFewBytes.some(b => b !== 0 && b !== 1);
+                  if (hasNonZero) {
+                    side = buffer[pos] === 0 ? "long" : "short";
+                    console.log(`Detected side: ${side} from position ${pos}`);
+                    break;
+                  }
+                }
+              }
+            }
+          }
+        } catch {
+          // Silent fail for base64 decode issues
+        }
+      }
+      
+      // Fallback: use log keywords if we couldn't parse from data
+      const logsJoined = logs.join(" ").toLowerCase();
+      
+      // Check for explicit direction indicators in logs
+      if (logsJoined.includes("bid") || logsJoined.includes("buy") || logsJoined.includes("long")) {
+        side = "long";
+      } else if (logsJoined.includes("ask") || logsJoined.includes("sell") || logsJoined.includes("short")) {
+        side = "short";
+      }
+      
+      // Additional heuristic: check balance changes
+      // Opening a long = paying SOL to receive tokens
+      // Opening a short = receiving SOL as collateral/margin
+      if (preBalances && postBalances && preBalances.length > 0 && postBalances.length > 0) {
+        const solChange = (postBalances[0] - preBalances[0]) / 1e9;
+        console.log(`Balance change: ${solChange} SOL`);
+        
+        // Large negative balance usually means opening a long (paying for position)
+        // Large positive balance usually means closing a long or receiving from short
+        // BUT this can be misleading because both positions require margin
+        // So we only use this as a weak signal, not overriding explicit side detection
+        if (side === "long" && solChange > 0.5) {
+          // If we thought it was long but received significant SOL, might be a short or close
+          console.log(`Balance heuristic suggests possible short (received ${solChange} SOL)`);
+        }
       }
 
-      const symbol = SYMBOL_MAP[instrId] || "SOL/USDC";
+      // Determine order type from logs
+      if (logsJoined.includes("limit")) orderType = "limit";
+      if (logsJoined.includes("market")) orderType = "market";
+      if (logsJoined.includes("spot")) marketType = "spot";
+      
+      // Default symbol - we can't reliably extract this without parsing account data
+      const symbol = "SOL/USDC";
       const entryTime = blockTime ? new Date(blockTime * 1000) : new Date();
       
-      // Generate realistic price based on symbol and time
+      // We cannot determine actual prices/quantities without SDK parsing
+      // Mark these as N/A values
       const basePrice = this.getBasePrice(symbol);
-      const priceVariation = 0.02; // 2% variation
-      const price = basePrice * (1 - priceVariation + Math.random() * priceVariation * 2);
       
-      // Generate realistic quantity
-      const quantity = 0.1 + Math.random() * 1.5;
-      const volume = price * quantity;
-      
-      // Calculate fees
+      // Fees - we can't determine exact fees without parsing logs fully
       const fees = {
-        makerFee: volume * 0.0002,
-        takerFee: volume * 0.0005,
-        fundingFee: marketType === "perpetual" ? volume * 0.0001 : 0,
-        totalFee: volume * 0.0007,
+        makerFee: 0,
+        takerFee: 0,
+        fundingFee: 0,
+        totalFee: 0,
       };
 
-      // Determine if trade is closed (older trades more likely to be closed)
-      const age = Date.now() - entryTime.getTime();
-      const isClosed = age > 3600000 && Math.random() > 0.3; // Older than 1 hour
-      
-      let exitPrice: number | undefined;
-      let pnl: number | undefined;
-      let pnlPercentage: number | undefined;
-
-      if (isClosed) {
-        // Generate exit price with realistic PnL distribution
-        const pnlMultiplier = (Math.random() - 0.45) * 0.1; // Slight positive bias
-        exitPrice = price * (1 + pnlMultiplier);
-        pnl = (side === "long" ? exitPrice - price : price - exitPrice) * quantity;
-        pnlPercentage = (pnl / volume) * 100;
-      }
-
+      // All trades are considered "open" since we can't track position lifecycle
+      // without the full SDK
       return {
         id: `trade-${tradeId}`,
         symbol,
         side,
         marketType,
         orderType,
-        entryPrice: price,
-        exitPrice,
-        quantity,
-        leverage: marketType === "perpetual" ? Math.floor(2 + Math.random() * 8) : undefined,
+        entryPrice: basePrice, // Approximate price
+        exitPrice: undefined,
+        quantity: 0, // Unknown without parsing
+        leverage: marketType === "perpetual" ? 1 : undefined,
         entryTime,
-        exitTime: isClosed ? new Date(entryTime.getTime() + Math.random() * 86400000) : undefined,
-        pnl,
-        pnlPercentage,
-        status: isClosed ? "closed" : "open",
+        exitTime: undefined,
+        pnl: undefined, // Cannot calculate without SDK
+        pnlPercentage: undefined,
+        status: "open", // Cannot determine closed status without SDK
         fees,
         txSignature: signature,
       };

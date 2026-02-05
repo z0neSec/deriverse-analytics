@@ -16,6 +16,63 @@ import type {
 import { toDate, getTime } from "@/lib/utils";
 
 /**
+ * Convert a timeframe string to a date range
+ */
+export function getDateRangeFromTimeframe(timeframe: string): { start: Date | null; end: Date | null } {
+  const now = new Date();
+  const end = now;
+  let start: Date | null = null;
+
+  switch (timeframe) {
+    case "1D":
+      start = new Date(now);
+      start.setHours(0, 0, 0, 0);
+      break;
+    case "1W":
+      start = new Date(now);
+      start.setDate(start.getDate() - 7);
+      break;
+    case "1M":
+      start = new Date(now);
+      start.setMonth(start.getMonth() - 1);
+      break;
+    case "3M":
+      start = new Date(now);
+      start.setMonth(start.getMonth() - 3);
+      break;
+    case "1Y":
+      start = new Date(now);
+      start.setFullYear(start.getFullYear() - 1);
+      break;
+    case "ALL":
+    default:
+      start = null;
+      break;
+  }
+
+  return { start, end: start ? end : null };
+}
+
+/**
+ * Filter trades with both filters and timeframe
+ */
+export function filterTradesWithTimeframe(
+  trades: Trade[], 
+  filters: FilterOptions, 
+  timeframe: string
+): Trade[] {
+  const dateRange = getDateRangeFromTimeframe(timeframe);
+  const filtersWithTimeframe: FilterOptions = {
+    ...filters,
+    dateRange: {
+      start: dateRange.start || filters.dateRange.start,
+      end: dateRange.end || filters.dateRange.end,
+    },
+  };
+  return filterTrades(trades, filtersWithTimeframe);
+}
+
+/**
  * Generate daily performance data from trades
  * This aggregates trades by day and calculates cumulative metrics
  */

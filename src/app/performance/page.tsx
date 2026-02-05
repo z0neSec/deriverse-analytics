@@ -14,7 +14,7 @@ import {
   calculatePortfolioMetrics,
   calculateTimeBasedMetrics,
   calculateSessionMetrics,
-  filterTrades,
+  filterTradesWithTimeframe,
   getOrderTypePerformance,
   generateDailyPerformance,
 } from "@/lib/analytics";
@@ -23,9 +23,9 @@ import { formatCurrency, formatDuration, toDate } from "@/lib/utils";
 import { cn } from "@/lib/utils";
 
 export default function PerformancePage() {
-  const { trades, filters } = useTradingStore();
+  const { trades, filters, selectedTimeframe } = useTradingStore();
 
-  const filteredTrades = useMemo(() => filterTrades(trades, filters), [trades, filters]);
+  const filteredTrades = useMemo(() => filterTradesWithTimeframe(trades, filters, selectedTimeframe), [trades, filters, selectedTimeframe]);
   const metrics = useMemo(() => calculatePortfolioMetrics(filteredTrades), [filteredTrades]);
   const hourlyMetrics = useMemo(() => calculateTimeBasedMetrics(filteredTrades), [filteredTrades]);
   const sessionMetrics = useMemo(() => calculateSessionMetrics(filteredTrades), [filteredTrades]);

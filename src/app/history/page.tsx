@@ -4,15 +4,15 @@ import React, { useMemo } from "react";
 import { useTradingStore } from "@/store";
 import { TradeHistoryTable, FilterBar } from "@/components/dashboard";
 import { Card, CardHeader, CardTitle, CardContent, StatCard, Button, EmptyState } from "@/components/ui";
-import { filterTrades, calculatePortfolioMetrics, calculateSymbolMetrics } from "@/lib/analytics";
+import { filterTradesWithTimeframe, calculatePortfolioMetrics, calculateSymbolMetrics } from "@/lib/analytics";
 import { formatCurrency } from "@/lib/utils";
 import { exportTradesToCSV, exportToPDF } from "@/lib/export";
 import { History, TrendingUp, TrendingDown, Activity, Download, FileText } from "lucide-react";
 
 export default function HistoryPage() {
-  const { trades, filters } = useTradingStore();
+  const { trades, filters, selectedTimeframe } = useTradingStore();
 
-  const filteredTrades = useMemo(() => filterTrades(trades, filters), [trades, filters]);
+  const filteredTrades = useMemo(() => filterTradesWithTimeframe(trades, filters, selectedTimeframe), [trades, filters, selectedTimeframe]);
   const metrics = useMemo(() => calculatePortfolioMetrics(filteredTrades), [filteredTrades]);
   const symbolMetrics = useMemo(() => calculateSymbolMetrics(filteredTrades), [filteredTrades]);
 

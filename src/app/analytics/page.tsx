@@ -14,7 +14,7 @@ import {
   calculatePortfolioMetrics,
   calculateTimeBasedMetrics,
   calculateSymbolMetrics,
-  filterTrades,
+  filterTradesWithTimeframe,
   generateDailyPerformance,
 } from "@/lib/analytics";
 import { formatCurrency, formatPercentage, toDate } from "@/lib/utils";
@@ -39,9 +39,9 @@ import {
 import { Download, FileText } from "lucide-react";
 
 export default function AnalyticsPage() {
-  const { trades, filters } = useTradingStore();
+  const { trades, filters, selectedTimeframe } = useTradingStore();
 
-  const filteredTrades = useMemo(() => filterTrades(trades, filters), [trades, filters]);
+  const filteredTrades = useMemo(() => filterTradesWithTimeframe(trades, filters, selectedTimeframe), [trades, filters, selectedTimeframe]);
   const metrics = useMemo(() => calculatePortfolioMetrics(filteredTrades), [filteredTrades]);
   const hourlyMetrics = useMemo(() => calculateTimeBasedMetrics(filteredTrades), [filteredTrades]);
   const symbolMetrics = useMemo(() => calculateSymbolMetrics(filteredTrades), [filteredTrades]);

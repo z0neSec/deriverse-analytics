@@ -19,7 +19,7 @@ import {
 import {
   calculatePortfolioMetrics,
   calculateSymbolMetrics,
-  filterTrades,
+  filterTradesWithTimeframe,
   generateDailyPerformance,
 } from "@/lib/analytics";
 import { EmptyState } from "@/components/ui";
@@ -57,10 +57,11 @@ export default function DashboardPage() {
   const trades = useTradingStore((state) => state.trades);
   const positions = useTradingStore((state) => state.positions);
   const filters = useTradingStore((state) => state.filters);
+  const selectedTimeframe = useTradingStore((state) => state.selectedTimeframe);
   const isConnected = useTradingStore((state) => state.isConnected);
 
-  // Apply filters and recalculate metrics
-  const filteredTrades = useMemo(() => filterTrades(trades, filters), [trades, filters]);
+  // Apply filters with timeframe and recalculate metrics
+  const filteredTrades = useMemo(() => filterTradesWithTimeframe(trades, filters, selectedTimeframe), [trades, filters, selectedTimeframe]);
 
   const metrics = useMemo(
     () => calculatePortfolioMetrics(filteredTrades),
