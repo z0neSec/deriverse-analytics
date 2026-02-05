@@ -25,11 +25,11 @@ function DeriverseLoader() {
     <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-black/95 backdrop-blur-sm">
       <span className="text-slate-400 text-sm tracking-widest uppercase mb-4">Loading</span>
       <div className="flex gap-1.5">
-        <div className="w-1 h-5 rounded-full bg-gradient-to-b from-emerald-400 to-teal-500 animate-bounce" style={{ animationDelay: '0ms' }} />
-        <div className="w-1 h-5 rounded-full bg-gradient-to-b from-emerald-400 to-teal-500 animate-bounce" style={{ animationDelay: '100ms' }} />
-        <div className="w-1 h-5 rounded-full bg-gradient-to-b from-emerald-400 to-teal-500 animate-bounce" style={{ animationDelay: '200ms' }} />
-        <div className="w-1 h-5 rounded-full bg-gradient-to-b from-emerald-400 to-teal-500 animate-bounce" style={{ animationDelay: '300ms' }} />
-        <div className="w-1 h-5 rounded-full bg-gradient-to-b from-emerald-400 to-teal-500 animate-bounce" style={{ animationDelay: '400ms' }} />
+        <div className="w-1 h-3 rounded-full bg-gradient-to-b from-emerald-400 to-teal-500 animate-bounce" style={{ animationDelay: '0ms' }} />
+        <div className="w-1 h-3 rounded-full bg-gradient-to-b from-emerald-400 to-teal-500 animate-bounce" style={{ animationDelay: '100ms' }} />
+        <div className="w-1 h-3 rounded-full bg-gradient-to-b from-emerald-400 to-teal-500 animate-bounce" style={{ animationDelay: '200ms' }} />
+        <div className="w-1 h-3 rounded-full bg-gradient-to-b from-emerald-400 to-teal-500 animate-bounce" style={{ animationDelay: '300ms' }} />
+        <div className="w-1 h-3 rounded-full bg-gradient-to-b from-emerald-400 to-teal-500 animate-bounce" style={{ animationDelay: '400ms' }} />
       </div>
     </div>
   );
