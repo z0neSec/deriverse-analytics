@@ -3,9 +3,10 @@
 import React from "react";
 import { Badge } from "@/components/ui";
 import { TrendingUp, TrendingDown, AlertTriangle } from "lucide-react";
-import { formatCurrency, formatPercentage } from "@/lib/utils";
+import { formatCurrency, formatPercentage, getCoinLogo } from "@/lib/utils";
 import type { Position } from "@/types";
 import { cn } from "@/lib/utils";
+import Image from "next/image";
 
 interface OpenPositionsProps {
   positions: Position[];
@@ -34,6 +35,14 @@ export function OpenPositions({ positions }: OpenPositionsProps) {
           >
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2">
+                <Image 
+                  src={getCoinLogo(position.symbol)} 
+                  alt={position.symbol} 
+                  width={24} 
+                  height={24} 
+                  className="rounded-full"
+                  unoptimized
+                />
                 <span className="font-medium text-slate-200">{position.symbol}</span>
                 <Badge variant={position.side === "long" ? "success" : "danger"}>
                   {position.side.toUpperCase()}

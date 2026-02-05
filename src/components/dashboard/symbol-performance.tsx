@@ -2,9 +2,10 @@
 
 import React from "react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui";
-import { formatCurrency } from "@/lib/utils";
+import { formatCurrency, getCoinLogo } from "@/lib/utils";
 import type { SymbolMetrics } from "@/types";
 import { cn } from "@/lib/utils";
+import Image from "next/image";
 
 interface SymbolPerformanceProps {
   data: SymbolMetrics[];
@@ -24,8 +25,15 @@ export function SymbolPerformance({ data }: SymbolPerformanceProps) {
               className="flex items-center justify-between p-3 rounded-lg bg-slate-800/30 hover:bg-slate-800/50 transition-colors"
             >
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-slate-700/50 to-slate-800/50 flex items-center justify-center text-slate-300 font-bold text-sm">
-                  {symbol.symbol.split("/")[0].slice(0, 3)}
+                <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-slate-700/50 to-slate-800/50 flex items-center justify-center overflow-hidden">
+                  <Image 
+                    src={getCoinLogo(symbol.symbol)} 
+                    alt={symbol.symbol} 
+                    width={28} 
+                    height={28} 
+                    className="rounded-full"
+                    unoptimized
+                  />
                 </div>
                 <div>
                   <p className="font-medium text-slate-200">{symbol.symbol}</p>

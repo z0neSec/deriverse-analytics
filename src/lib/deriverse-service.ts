@@ -16,8 +16,11 @@ export const DERIVERSE_CONFIG = {
   VERSION: 12,
 };
 
+// Live price cache (updated periodically)
+const livePriceCache: Record<string, { price: number; timestamp: number }> = {};
+const PRICE_CACHE_TTL = 30000; // 30 seconds
+
 // Trading pair mapping based on instrument ID
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const SYMBOL_MAP: Record<number, string> = {
   0: "SOL/USDC",
   1: "BTC/USDC",
@@ -27,6 +30,132 @@ const SYMBOL_MAP: Record<number, string> = {
   5: "JUP/USDC",
   6: "PYTH/USDC",
 };
+
+// Known Deriverse instruction discriminators (first 8 bytes of instruction data)
+// These help identify what type of trade it is
+const INSTRUCTION_TYPES = {
+  // Perp instructions
+  PERP_PLACE_ORDER: "perp_place_order",
+  PERP_CANCEL_ORDER: "perp_cancel",
+  PERP_SETTLE: "perp_settle",
+  // Spot instructions  
+  SPOT_PLACE_ORDER: "spot_place_order",
+  SPOT_SWAP: "spot_swap",
+  SERUM_PLACE_ORDER: "serum3_place_order",
+};
+
+/**
+ * Fetch live price from a public API
+ * Exported for use in real-time PnL calculations
+ */
+export async function fetchLivePrice(symbol: string): Promise<number> {
+  const baseSymbol = symbol.split("/")[0].toLowerCase();
+  
+  // Check cache first
+  const cached = livePriceCache[baseSymbol];
+  if (cached && Date.now() - cached.timestamp < PRICE_CACHE_TTL) {
+    console.log(`[Price] Using cached price for ${symbol}: $${cached.price}`);
+    return cached.price;
+  }
+  
+  try {
+    // Use CoinGecko API for live prices
+    const coinIds: Record<string, string> = {
+      sol: "solana",
+      btc: "bitcoin",
+      eth: "ethereum",
+      ray: "raydium",
+      bonk: "bonk",
+      jup: "jupiter-exchange-solana",
+      pyth: "pyth-network",
+    };
+    
+    const coinId = coinIds[baseSymbol] || "solana";
+    console.log(`[Price] Fetching live price for ${symbol} (${coinId})...`);
+    
+    const response = await fetch(
+      `https://api.coingecko.com/api/v3/simple/price?ids=${coinId}&vs_currencies=usd`,
+      { signal: AbortSignal.timeout(5000) }
+    );
+    
+    if (response.ok) {
+      const data = await response.json();
+      const price = data[coinId]?.usd || getFallbackPrice(symbol);
+      livePriceCache[baseSymbol] = { price, timestamp: Date.now() };
+      console.log(`[Price] Live price for ${symbol}: $${price}`);
+      return price;
+    } else {
+      console.warn(`[Price] API returned ${response.status} for ${symbol}`);
+    }
+  } catch (error) {
+    console.warn(`[Price] Failed to fetch live price for ${symbol}:`, error);
+  }
+  
+  const fallback = getFallbackPrice(symbol);
+  console.log(`[Price] Using fallback price for ${symbol}: $${fallback}`);
+  return fallback;
+}
+
+/**
+ * Get fallback price when API fails
+ */
+function getFallbackPrice(symbol: string): number {
+  const fallbackPrices: Record<string, number> = {
+    "SOL/USDC": 180,
+    "BTC/USDC": 95000,
+    "ETH/USDC": 3200,
+    "RAY/USDC": 4.5,
+    "BONK/USDC": 0.000025,
+    "JUP/USDC": 1.2,
+    "PYTH/USDC": 0.45,
+  };
+  return fallbackPrices[symbol] || 100;
+}
+
+/**
+ * Update PnL for open trades using current live prices
+ * Call this periodically for real-time PnL tracking
+ */
+export async function updateTradesPnL(trades: Trade[]): Promise<Trade[]> {
+  // Get unique symbols from open trades
+  const openTrades = trades.filter(t => t.status === "open");
+  if (openTrades.length === 0) return trades;
+
+  const symbols = [...new Set(openTrades.map(t => t.symbol))];
+  
+  // Fetch current prices for all symbols
+  const currentPrices: Record<string, number> = {};
+  await Promise.all(
+    symbols.map(async (symbol) => {
+      currentPrices[symbol] = await fetchLivePrice(symbol);
+    })
+  );
+
+  // Update trades with real-time PnL
+  return trades.map((trade) => {
+    if (trade.status !== "open") return trade;
+
+    const currentPrice = currentPrices[trade.symbol] || trade.entryPrice;
+    const direction = trade.side === "long" ? 1 : -1;
+    const priceDiff = currentPrice - trade.entryPrice;
+    const pnl = priceDiff * trade.quantity * direction;
+    const pnlPercentage = (priceDiff / trade.entryPrice) * 100 * direction;
+
+    return {
+      ...trade,
+      currentPrice,
+      pnl,
+      pnlPercentage,
+    };
+  });
+}
+
+/**
+ * Get current price for a symbol (for UI display)
+ */
+export async function getCurrentPrice(symbol: string): Promise<number> {
+  return fetchLivePrice(symbol);
+}
 
 // Client data response from SDK
 interface ClientDataResponse {
@@ -261,13 +390,15 @@ export class DeriverseService {
           deriverseCount++;
 
           // Parse logs for trade information, including balance changes
-          const parsedTrade = this.parseTransactionLogs(
+          const parsedTrade = await this.parseTransactionLogs(
             logs, 
             sig.signature, 
             tx.blockTime ?? null, 
             tradeId,
             tx.meta.preBalances,
-            tx.meta.postBalances
+            tx.meta.postBalances,
+            tx.meta.preTokenBalances as Array<{ mint: string; uiTokenAmount: { uiAmount: number | null } }>,
+            tx.meta.postTokenBalances as Array<{ mint: string; uiTokenAmount: { uiAmount: number | null } }>
           );
           
           if (parsedTrade) {
@@ -290,16 +421,18 @@ export class DeriverseService {
 
   /**
    * Parse transaction logs to extract trade information
-   * Uses Deriverse program data and logs to determine trade direction
+   * Uses Deriverse program data and logs to determine trade type, direction, and pricing
    */
-  private parseTransactionLogs(
+  private async parseTransactionLogs(
     logs: string[], 
     signature: string, 
     blockTime: number | null,
     tradeId: number,
     preBalances?: number[],
-    postBalances?: number[]
-  ): Trade | null {
+    postBalances?: number[],
+    preTokenBalances?: Array<{ mint: string; uiTokenAmount: { uiAmount: number | null } }>,
+    postTokenBalances?: Array<{ mint: string; uiTokenAmount: { uiAmount: number | null } }>
+  ): Promise<Trade | null> {
     try {
       // Look for Deriverse program invocation and successful execution
       const hasProgram = logs.some(log => 
@@ -312,67 +445,86 @@ export class DeriverseService {
       
       if (!hasProgram || !isSuccess) return null;
 
-      // Debug log filtered
-      const programLogs = logs.filter(l => 
-        l.includes("Drvrseg8") || 
-        l.includes("Program log") || 
-        l.includes("Program data")
-      );
-      console.log(`TX ${signature.slice(0, 8)}... logs:`, programLogs);
-
-      // Parse trade side from logs and balance changes
-      let side: TradeSide = "long"; // Default
-      let marketType: MarketType = "perpetual"; // Deriverse is primarily perp trading
-      let orderType: OrderType = "market";
-      
-      // Check log keywords for side detection
       const logsJoined = logs.join(" ").toLowerCase();
+      const logsJoinedOriginal = logs.join(" ");
       
-      // Check for explicit direction indicators in logs
-      if (logsJoined.includes("ask") || logsJoined.includes("sell") || logsJoined.includes("short")) {
+      // Debug log
+      console.log(`[Parse TX ${signature.slice(0, 8)}] Analyzing logs...`);
+
+      // ============================================
+      // STEP 1: Detect Market Type (Spot vs Perp)
+      // ============================================
+      let marketType: MarketType = "spot"; // Default to spot, change to perp if detected
+      
+      // Check for perp-specific keywords in logs
+      const perpKeywords = ["perp", "perpetual", "funding", "perp_market", "PerpMarket", "perp_place", "PerpPlaceOrder"];
+      const spotKeywords = ["spot", "serum", "swap", "token_swap", "Serum3", "openbook", "spot_market"];
+      
+      const hasPerpKeyword = perpKeywords.some(kw => logsJoinedOriginal.includes(kw));
+      const hasSpotKeyword = spotKeywords.some(kw => logsJoinedOriginal.includes(kw));
+      
+      if (hasPerpKeyword && !hasSpotKeyword) {
+        marketType = "perpetual";
+      } else if (hasSpotKeyword && !hasPerpKeyword) {
+        marketType = "spot";
+      } else if (hasPerpKeyword && hasSpotKeyword) {
+        // Both present - check which appears more
+        const perpCount = perpKeywords.filter(kw => logsJoinedOriginal.includes(kw)).length;
+        const spotCount = spotKeywords.filter(kw => logsJoinedOriginal.includes(kw)).length;
+        marketType = perpCount > spotCount ? "perpetual" : "spot";
+      }
+      
+      console.log(`[Parse TX ${signature.slice(0, 8)}] Market type: ${marketType} (perp keywords: ${hasPerpKeyword}, spot keywords: ${hasSpotKeyword})`);
+
+      // ============================================
+      // STEP 2: Detect Trade Side (Long/Buy vs Short/Sell)
+      // ============================================
+      let side: TradeSide = "long"; // Default
+      let sideConfidence = 0;
+      
+      // Method 1: Check for explicit side keywords in logs
+      // In Deriverse/Mango: bid = buy = long, ask = sell = short
+      const buyKeywords = ["bid", "buy", "long", "PerpOrderSide::Bid", "Side::Bid"];
+      const sellKeywords = ["ask", "sell", "short", "PerpOrderSide::Ask", "Side::Ask"];
+      
+      const hasBuyKeyword = buyKeywords.some(kw => logsJoinedOriginal.toLowerCase().includes(kw.toLowerCase()));
+      const hasSellKeyword = sellKeywords.some(kw => logsJoinedOriginal.toLowerCase().includes(kw.toLowerCase()));
+      
+      if (hasSellKeyword && !hasBuyKeyword) {
         side = "short";
-      } else if (logsJoined.includes("bid") || logsJoined.includes("buy") || logsJoined.includes("long")) {
+        sideConfidence = 3;
+      } else if (hasBuyKeyword && !hasSellKeyword) {
         side = "long";
+        sideConfidence = 3;
       }
       
-      // Use balance changes as additional heuristic
-      if (preBalances && postBalances && preBalances.length > 0 && postBalances.length > 0) {
-        const solChange = (postBalances[0] - preBalances[0]) / 1e9;
-        console.log(`Balance change: ${solChange} SOL`);
-        
-        // When opening a short position, you typically receive margin/collateral
-        // When opening a long, you pay SOL
-        if (solChange > 0.01) {
-          side = "short";
-        } else if (solChange < -0.01) {
-          side = "long";
-        }
-      }
-      
-      // Try to parse program data for more accurate side detection
-      // Use browser-safe base64 decoding
+      // Method 2: Parse program data for taker_side byte
       const dataLogs = logs.filter(l => l.startsWith("Program data:"));
       for (const dataLog of dataLogs) {
         try {
           const base64Data = dataLog.replace("Program data: ", "");
-          // Use browser-safe atob instead of Buffer
           const binaryString = atob(base64Data);
           const bytes = new Uint8Array(binaryString.length);
           for (let i = 0; i < binaryString.length; i++) {
             bytes[i] = binaryString.charCodeAt(i);
           }
           
-          // Check for taker_side at known positions
-          // FillLogV3 has taker_side at offset 34 (after 8-byte discriminator + 2 bytes + 32 byte pubkey - 8)
-          if (bytes.length > 40) {
-            const possibleSidePositions = [34, 35, 42, 43, 10, 11];
-            for (const pos of possibleSidePositions) {
-              if (bytes[pos] === 0 || bytes[pos] === 1) {
-                if (bytes.length > pos + 5) {
-                  const hasNonZero = bytes.slice(pos + 1, pos + 5).some(b => b !== 0 && b !== 1);
-                  if (hasNonZero) {
+          // FillLogV3 structure: taker_side is at offset 34 (after discriminator + market_index + pubkey)
+          // PerpTakerTradeLog: taker_side at different offset
+          // taker_side: 0 = bid (long), 1 = ask (short)
+          if (bytes.length > 40 && sideConfidence < 5) {
+            // Check specific known positions for taker_side
+            const sidePositions = [34, 35, 10, 11, 42, 43];
+            for (const pos of sidePositions) {
+              if (pos < bytes.length && (bytes[pos] === 0 || bytes[pos] === 1)) {
+                // Validate this looks like a side byte
+                if (bytes.length > pos + 4) {
+                  const nextBytes = bytes.slice(pos + 1, pos + 5);
+                  const hasValidFollowingData = nextBytes.some(b => b > 1);
+                  if (hasValidFollowingData) {
                     side = bytes[pos] === 0 ? "long" : "short";
-                    console.log(`Detected side: ${side} from position ${pos}`);
+                    sideConfidence = 5;
+                    console.log(`[Parse TX ${signature.slice(0, 8)}] Side from program data: ${side} at position ${pos}`);
                     break;
                   }
                 }
@@ -380,25 +532,64 @@ export class DeriverseService {
             }
           }
         } catch {
-          // Silent fail for base64 decode issues
+          // Silent fail
         }
       }
-
-      // Determine order type from logs
-      if (logsJoined.includes("limit")) orderType = "limit";
-      if (logsJoined.includes("market")) orderType = "market";
-      if (logsJoined.includes("spot")) marketType = "spot";
       
-      // Default symbol - we can't reliably extract this without parsing account data
-      const symbol = "SOL/USDC";
+      // Method 3: Use token balance changes as fallback
+      // For spot: buying = receive base token, selling = receive quote token
+      // For perp: this is less reliable but can be a hint
+      if (sideConfidence < 2 && preTokenBalances && postTokenBalances) {
+        // Check if we received or sent the base token
+        for (let i = 0; i < postTokenBalances.length; i++) {
+          const postBal = postTokenBalances[i];
+          const preBal = preTokenBalances.find(p => p.mint === postBal.mint);
+          if (preBal && postBal.uiTokenAmount.uiAmount && preBal.uiTokenAmount.uiAmount) {
+            const change = postBal.uiTokenAmount.uiAmount - preBal.uiTokenAmount.uiAmount;
+            if (Math.abs(change) > 0.0001) {
+              // If we received tokens (non-USDC), it's likely a buy/long
+              // If we received USDC, it's likely a sell/short
+              const isUSDC = postBal.mint.includes("USDC") || postBal.mint.includes("EPjFWdd"); // USDC mint
+              if (change > 0 && !isUSDC) {
+                side = "long";
+                sideConfidence = 2;
+              } else if (change > 0 && isUSDC) {
+                side = "short";
+                sideConfidence = 2;
+              }
+            }
+          }
+        }
+      }
+      
+      console.log(`[Parse TX ${signature.slice(0, 8)}] Side: ${side} (confidence: ${sideConfidence})`);
+
+      // ============================================
+      // STEP 3: Determine Order Type
+      // ============================================
+      let orderType: OrderType = "market";
+      if (logsJoined.includes("limit") || logsJoined.includes("postonly")) {
+        orderType = "limit";
+      }
+
+      // ============================================
+      // STEP 4: Extract Symbol and Price
+      // ============================================
+      const symbol = "SOL/USDC"; // Default - would need account parsing for accurate symbol
       const entryTime = blockTime ? new Date(blockTime * 1000) : new Date();
       
-      // We cannot determine actual prices/quantities without SDK parsing
-      // Use approximate values
-      const basePrice = this.getBasePrice(symbol);
+      // Try to get live price
+      let entryPrice: number;
+      try {
+        entryPrice = await fetchLivePrice(symbol);
+      } catch {
+        entryPrice = getFallbackPrice(symbol);
+      }
       
-      // Estimate quantity from balance changes if available
-      let quantity = 0.1; // Default minimal quantity
+      // ============================================
+      // STEP 5: Calculate Quantity from Balance Changes
+      // ============================================
+      let quantity = 0.1;
       if (preBalances && postBalances && preBalances.length > 0 && postBalances.length > 0) {
         const solChange = Math.abs(postBalances[0] - preBalances[0]) / 1e9;
         if (solChange > 0.001) {
@@ -406,8 +597,10 @@ export class DeriverseService {
         }
       }
       
-      // Fees - estimate based on typical Deriverse fees
-      const volume = basePrice * quantity;
+      // ============================================
+      // STEP 6: Calculate Fees
+      // ============================================
+      const volume = entryPrice * quantity;
       const fees = {
         makerFee: volume * 0.0002,
         takerFee: volume * 0.0005,
@@ -421,7 +614,7 @@ export class DeriverseService {
         side,
         marketType,
         orderType,
-        entryPrice: basePrice,
+        entryPrice,
         exitPrice: undefined,
         quantity,
         leverage: marketType === "perpetual" ? 1 : undefined,
@@ -437,22 +630,6 @@ export class DeriverseService {
       console.error("Failed to parse transaction logs:", error);
       return null;
     }
-  }
-
-  /**
-   * Get base price for a symbol
-   */
-  private getBasePrice(symbol: string): number {
-    const prices: Record<string, number> = {
-      "SOL/USDC": 180,
-      "BTC/USDC": 95000,
-      "ETH/USDC": 3200,
-      "RAY/USDC": 4.5,
-      "BONK/USDC": 0.000025,
-      "JUP/USDC": 1.2,
-      "PYTH/USDC": 0.45,
-    };
-    return prices[symbol] || 100;
   }
 
   /**

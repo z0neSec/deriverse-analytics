@@ -9,7 +9,7 @@ import {
 } from "@solana/wallet-adapter-react";
 import { WalletModalProvider } from "@solana/wallet-adapter-react-ui";
 import { clusterApiUrl } from "@solana/web3.js";
-import { deriverseService } from "@/lib/deriverse-service";
+import { deriverseService, updateTradesPnL } from "@/lib/deriverse-service";
 import { useTradingStore } from "@/store";
 
 // Import wallet adapter styles
@@ -19,16 +19,17 @@ interface WalletContextProviderProps {
   children: React.ReactNode;
 }
 
-// Deriverse-style loading component
+// Deriverse-style loading component with theme colors
 function DeriverseLoader() {
   return (
-    <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-black">
-      <span className="text-slate-400 text-sm tracking-wide mb-3">Loading</span>
-      <div className="flex gap-1">
-        <div className="w-1.5 h-3 rounded-full bg-purple-500 animate-bounce" style={{ animationDelay: '0ms' }} />
-        <div className="w-1.5 h-3 rounded-full bg-purple-500 animate-bounce" style={{ animationDelay: '150ms' }} />
-        <div className="w-1.5 h-3 rounded-full bg-purple-500 animate-bounce" style={{ animationDelay: '300ms' }} />
-        <div className="w-1.5 h-3 rounded-full bg-purple-500 animate-bounce" style={{ animationDelay: '450ms' }} />
+    <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-black/95 backdrop-blur-sm">
+      <span className="text-slate-400 text-sm tracking-widest uppercase mb-4">Loading</span>
+      <div className="flex gap-1.5">
+        <div className="w-1 h-5 rounded-full bg-gradient-to-b from-emerald-400 to-teal-500 animate-bounce" style={{ animationDelay: '0ms' }} />
+        <div className="w-1 h-5 rounded-full bg-gradient-to-b from-emerald-400 to-teal-500 animate-bounce" style={{ animationDelay: '100ms' }} />
+        <div className="w-1 h-5 rounded-full bg-gradient-to-b from-emerald-400 to-teal-500 animate-bounce" style={{ animationDelay: '200ms' }} />
+        <div className="w-1 h-5 rounded-full bg-gradient-to-b from-emerald-400 to-teal-500 animate-bounce" style={{ animationDelay: '300ms' }} />
+        <div className="w-1 h-5 rounded-full bg-gradient-to-b from-emerald-400 to-teal-500 animate-bounce" style={{ animationDelay: '400ms' }} />
       </div>
     </div>
   );
@@ -40,6 +41,7 @@ function WalletStateHandler({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const { connected, publicKey } = useWallet();
   const setTrades = useTradingStore((state) => state.setTrades);
+  const trades = useTradingStore((state) => state.trades);
   const setPositions = useTradingStore((state) => state.setPositions);
   const setConnected = useTradingStore((state) => state.setConnected);
   const clearData = useTradingStore((state) => state.clearData);
@@ -48,11 +50,59 @@ function WalletStateHandler({ children }: { children: React.ReactNode }) {
   const prevConnectedRef = useRef<boolean>(false);
   const prevAddressRef = useRef<string | null>(null);
   const hasInitializedRef = useRef(false);
+  const pnlIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   // Initialize Deriverse SDK on mount
   useEffect(() => {
     deriverseService.initialize();
   }, []);
+
+  // Track whether we have trades (to avoid running interval when no trades)
+  const hasTrades = trades.length > 0;
+  const tradesRef = useRef(trades);
+  tradesRef.current = trades;
+
+  // Real-time PnL update interval (every 30 seconds)
+  useEffect(() => {
+    // Clear any existing interval
+    if (pnlIntervalRef.current) {
+      clearInterval(pnlIntervalRef.current);
+      pnlIntervalRef.current = null;
+    }
+
+    // Only run if connected and has trades
+    if (!connected || !hasTrades) return;
+
+    const updatePnL = async () => {
+      try {
+        const currentTrades = tradesRef.current;
+        const updatedTrades = await updateTradesPnL(currentTrades);
+        // Only update if there are actual changes
+        const hasChanges = updatedTrades.some((t, i) => 
+          t.pnl !== currentTrades[i]?.pnl || t.currentPrice !== currentTrades[i]?.currentPrice
+        );
+        if (hasChanges) {
+          console.log('[WalletProvider] Real-time PnL updated');
+          setTrades(updatedTrades);
+        }
+      } catch (error) {
+        console.warn('[WalletProvider] PnL update failed:', error);
+      }
+    };
+
+    // Run immediately
+    updatePnL();
+
+    // Then every 30 seconds
+    pnlIntervalRef.current = setInterval(updatePnL, 30000);
+
+    return () => {
+      if (pnlIntervalRef.current) {
+        clearInterval(pnlIntervalRef.current);
+        pnlIntervalRef.current = null;
+      }
+    };
+  }, [connected, hasTrades, setTrades]);
 
   // Fetch live data when wallet connects
   const fetchLiveData = useCallback(async (walletAddress: string) => {

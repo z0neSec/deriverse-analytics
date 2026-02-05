@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useMemo } from "react";
+import React, { useMemo, useCallback } from "react";
 import { useTradingStore } from "@/store";
 import { TradeHistoryTable, FilterBar } from "@/components/dashboard";
 import { Card, CardHeader, CardTitle, CardContent, StatCard, Button, EmptyState } from "@/components/ui";
@@ -8,9 +8,10 @@ import { filterTradesWithTimeframe, calculatePortfolioMetrics, calculateSymbolMe
 import { formatCurrency } from "@/lib/utils";
 import { exportTradesToCSV, exportToPDF } from "@/lib/export";
 import { History, TrendingUp, TrendingDown, Activity, Download, FileText } from "lucide-react";
+import type { Trade } from "@/types";
 
 export default function HistoryPage() {
-  const { trades, filters, selectedTimeframe } = useTradingStore();
+  const { trades, filters, selectedTimeframe, updateTrade } = useTradingStore();
 
   const filteredTrades = useMemo(() => filterTradesWithTimeframe(trades, filters, selectedTimeframe), [trades, filters, selectedTimeframe]);
   const metrics = useMemo(() => calculatePortfolioMetrics(filteredTrades), [filteredTrades]);
@@ -26,6 +27,27 @@ export default function HistoryPage() {
   const handleExportPDF = () => {
     exportToPDF(filteredTrades, metrics, symbolMetrics);
   };
+
+  // Handle closing a trade - marks it as closed and calculates final PnL
+  const handleCloseTrade = useCallback((trade: Trade) => {
+    const currentPrice = trade.currentPrice || trade.entryPrice;
+    const direction = trade.side === "long" ? 1 : -1;
+    const priceDiff = currentPrice - trade.entryPrice;
+    const pnl = priceDiff * trade.quantity * direction;
+    const pnlPercentage = (priceDiff / trade.entryPrice) * 100 * direction;
+
+    // Note: This simulates closing in the dashboard UI
+    // Actual closing requires a Deriverse transaction
+    if (confirm(`Close this ${trade.side.toUpperCase()} position?\n\nSymbol: ${trade.symbol}\nEntry: $${trade.entryPrice.toFixed(2)}\nCurrent: $${currentPrice.toFixed(2)}\nPnL: $${pnl.toFixed(2)} (${pnlPercentage >= 0 ? '+' : ''}${pnlPercentage.toFixed(2)}%)\n\nNote: To actually close on Deriverse, go to the exchange and place an opposite order.`)) {
+      updateTrade(trade.id, {
+        status: "closed",
+        exitPrice: currentPrice,
+        exitTime: new Date(),
+        pnl,
+        pnlPercentage,
+      });
+    }
+  }, [updateTrade]);
 
   return (
     <div className="space-y-6">
@@ -148,7 +170,7 @@ export default function HistoryPage() {
           </Card>
 
           {/* Trade History Table */}
-          <TradeHistoryTable trades={filteredTrades} />
+          <TradeHistoryTable trades={filteredTrades} onCloseTrade={handleCloseTrade} />
         </>
       )}
     </div>

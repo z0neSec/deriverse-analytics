@@ -14,6 +14,7 @@ export interface Trade {
   orderType: OrderType;
   status: TradeStatus;
   entryPrice: number;
+  currentPrice?: number; // Live price for real-time PnL
   exitPrice?: number;
   quantity: number;
   leverage?: number;

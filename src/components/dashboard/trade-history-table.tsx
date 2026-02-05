@@ -12,7 +12,7 @@ import {
   SortingState,
 } from "@tanstack/react-table";
 import { format } from "date-fns";
-import { toDate } from "@/lib/utils";
+import { toDate, getCoinLogo } from "@/lib/utils";
 import {
   ArrowUpDown,
   ChevronLeft,
@@ -20,20 +20,23 @@ import {
   ExternalLink,
   StickyNote,
   Tag,
+  X,
 } from "lucide-react";
 import { Card, CardHeader, CardTitle, CardContent, Badge, Button } from "@/components/ui";
 import { formatCurrency, formatPercentage } from "@/lib/utils";
 import type { Trade } from "@/types";
 import { cn } from "@/lib/utils";
+import Image from "next/image";
 
 const columnHelper = createColumnHelper<Trade>();
 
 interface TradeHistoryTableProps {
   trades: Trade[];
   onAddNote?: (tradeId: string) => void;
+  onCloseTrade?: (trade: Trade) => void;
 }
 
-export function TradeHistoryTable({ trades }: TradeHistoryTableProps) {
+export function TradeHistoryTable({ trades, onCloseTrade }: TradeHistoryTableProps) {
   const [sorting, setSorting] = useState<SortingState>([
     { id: "entryTime", desc: true },
   ]);
@@ -62,6 +65,14 @@ export function TradeHistoryTable({ trades }: TradeHistoryTableProps) {
         header: "Symbol",
         cell: (info) => (
           <div className="flex items-center gap-2">
+            <Image 
+              src={getCoinLogo(info.getValue())} 
+              alt={info.getValue()} 
+              width={20} 
+              height={20} 
+              className="rounded-full"
+              unoptimized
+            />
             <span className="font-medium text-slate-200">{info.getValue()}</span>
             <Badge variant={info.row.original.marketType === "spot" ? "info" : "warning"} size="sm">
               {info.row.original.marketType}
@@ -82,10 +93,27 @@ export function TradeHistoryTable({ trades }: TradeHistoryTableProps) {
         cell: (info) => formatCurrency(info.getValue()),
       }),
       columnHelper.accessor("exitPrice", {
-        header: "Exit",
+        header: "Exit/Current",
         cell: (info) => {
-          const value = info.getValue();
-          return value ? formatCurrency(value) : "-";
+          const trade = info.row.original;
+          const exitPrice = info.getValue();
+          const currentPrice = trade.currentPrice;
+          const isOpen = trade.status === "open";
+          
+          if (exitPrice) {
+            return <span className="tabular-nums" style={{ fontFamily: 'var(--font-jetbrains)' }}>{formatCurrency(exitPrice)}</span>;
+          }
+          
+          if (isOpen && currentPrice) {
+            return (
+              <div className="flex items-center gap-1">
+                <span className="text-purple-400 tabular-nums" style={{ fontFamily: 'var(--font-jetbrains)' }}>{formatCurrency(currentPrice)}</span>
+                <span className="text-[9px] text-purple-500">LIVE</span>
+              </div>
+            );
+          }
+          
+          return <span className="text-slate-500">-</span>;
         },
       }),
       columnHelper.accessor("quantity", {
@@ -110,9 +138,37 @@ export function TradeHistoryTable({ trades }: TradeHistoryTableProps) {
           </button>
         ),
         cell: (info) => {
+          const trade = info.row.original;
           const pnl = info.getValue();
-          const pnlPercentage = info.row.original.pnlPercentage;
-          if (pnl === undefined) return <span className="text-slate-500">Open</span>;
+          const pnlPercentage = trade.pnlPercentage;
+          const currentPrice = trade.currentPrice;
+          const isOpen = trade.status === "open";
+          
+          // For open trades with real-time price data
+          if (isOpen && currentPrice !== undefined && pnl !== undefined) {
+            return (
+              <div>
+                <div className="flex items-center gap-1">
+                  <p className={cn("font-medium tabular-nums", pnl >= 0 ? "text-emerald-500/90" : "text-rose-500/90")} style={{ fontFamily: 'var(--font-jetbrains)' }}>
+                    {formatCurrency(pnl)}
+                  </p>
+                  <span className="text-[10px] text-purple-400 animate-pulse">LIVE</span>
+                </div>
+                {pnlPercentage !== undefined && (
+                  <p className="text-xs text-slate-500 tabular-nums">{formatPercentage(pnlPercentage)}</p>
+                )}
+                <p className="text-[10px] text-slate-600 tabular-nums">@ {formatCurrency(currentPrice)}</p>
+              </div>
+            );
+          }
+          
+          // For open trades without real-time data yet
+          if (isOpen && pnl === undefined) {
+            return <span className="text-slate-500">Fetching...</span>;
+          }
+          
+          // For closed trades
+          if (pnl === undefined) return <span className="text-slate-500">-</span>;
           return (
             <div>
               <p className={cn("font-medium tabular-nums", pnl >= 0 ? "text-emerald-500/90" : "text-rose-500/90")} style={{ fontFamily: 'var(--font-jetbrains)' }}>
@@ -143,6 +199,17 @@ export function TradeHistoryTable({ trades }: TradeHistoryTableProps) {
         id: "actions",
         cell: (info) => (
           <div className="flex items-center gap-2">
+            {/* Close trade button for open trades */}
+            {info.row.original.status === "open" && onCloseTrade && (
+              <button
+                onClick={() => onCloseTrade(info.row.original)}
+                className="flex items-center gap-1 px-2 py-1 text-xs font-medium text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 rounded transition-colors"
+                title="Close this position"
+              >
+                <X className="w-3 h-3" />
+                Close
+              </button>
+            )}
             {info.row.original.notes && (
               <StickyNote className="w-4 h-4 text-amber-400" />
             )}
@@ -161,7 +228,7 @@ export function TradeHistoryTable({ trades }: TradeHistoryTableProps) {
         ),
       }),
     ],
-    []
+    [onCloseTrade]
   );
 
   const table = useReactTable({
