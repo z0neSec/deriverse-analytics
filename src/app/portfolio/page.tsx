@@ -14,12 +14,25 @@ import { cn } from "@/lib/utils";
 const ALLOCATION_COLORS = ["#10B981", "#3B82F6", "#F59E0B", "#8B5CF6", "#EC4899"];
 
 export default function PortfolioPage() {
-  const { trades, positions, filters, selectedTimeframe } = useTradingStore();
+  const { trades, positions, filters, selectedTimeframe, isConnected } = useTradingStore();
 
   const filteredTrades = useMemo(() => filterTradesWithTimeframe(trades, filters, selectedTimeframe), [trades, filters, selectedTimeframe]);
   const metrics = useMemo(() => calculatePortfolioMetrics(filteredTrades), [filteredTrades]);
   const symbolMetrics = useMemo(() => calculateSymbolMetrics(filteredTrades), [filteredTrades]);
   const dailyPerformance = useMemo(() => generateDailyPerformance(filteredTrades), [filteredTrades]);
+
+  // Debug: Log trades data
+  console.log('[PortfolioPage] Render:', { 
+    isConnected,
+    tradesCount: trades.length, 
+    filteredCount: filteredTrades.length,
+    selectedTimeframe,
+    filters: {
+      symbols: filters.symbols,
+      sides: filters.sides,
+      status: filters.status,
+    }
+  });
 
   // Calculate portfolio allocation
   const allocationData = symbolMetrics.slice(0, 5).map((s, index) => ({
@@ -58,11 +71,21 @@ export default function PortfolioPage() {
       {/* Filter Bar */}
       <FilterBar />
 
-      {/* Show empty state if no trades */}
-      {trades.length === 0 ? (
+      {/* Show empty state if no trades or wallet not connected */}
+      {!isConnected ? (
         <EmptyState 
-          title="No Portfolio Data"
+          title="Wallet Not Connected"
           description="Connect your wallet to view your portfolio overview"
+        />
+      ) : trades.length === 0 ? (
+        <EmptyState 
+          title="No Trading Data"
+          description="No Deriverse trades found for this wallet. Try trading on alpha.deriverse.io first!"
+        />
+      ) : filteredTrades.length === 0 ? (
+        <EmptyState 
+          title="No Matching Trades"
+          description={`Found ${trades.length} trades but none match the current filters. Try selecting "All Time" or reset filters.`}
         />
       ) : (
         <>

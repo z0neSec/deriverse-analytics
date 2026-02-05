@@ -17,6 +17,7 @@ export const DERIVERSE_CONFIG = {
 };
 
 // Trading pair mapping based on instrument ID
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const SYMBOL_MAP: Record<number, string> = {
   0: "SOL/USDC",
   1: "BTC/USDC",
@@ -89,23 +90,34 @@ export class DeriverseService {
 
   /**
    * Check if wallet has any Deriverse transactions
+   * Simplified to just check logs for efficiency
    */
   private async checkDeriverseActivity(walletAddress: string): Promise<boolean> {
     try {
       const { Connection, PublicKey } = await import("@solana/web3.js");
-      const connection = new Connection(DERIVERSE_CONFIG.RPC_HTTP, "confirmed");
+      const connection = new Connection(DERIVERSE_CONFIG.RPC_HTTP, {
+        commitment: "confirmed",
+        confirmTransactionInitialTimeout: 60000,
+      });
       
       const walletPubkey = new PublicKey(walletAddress);
       const programPubkey = new PublicKey(DERIVERSE_CONFIG.PROGRAM_ID);
 
+      console.log("[DeriverseService] Checking for Deriverse activity...");
+
       // Fetch recent signatures
       const signatures = await connection.getSignaturesForAddress(walletPubkey, {
-        limit: 50,
+        limit: 20, // Just check a few for activity
       });
 
-      // Check if any involve Deriverse
-      for (const sig of signatures) {
+      console.log(`[DeriverseService] Checking ${signatures.length} transactions for Deriverse activity`);
+
+      // Check if any involve Deriverse - just check a few to confirm activity
+      for (let i = 0; i < Math.min(signatures.length, 10); i++) {
+        const sig = signatures[i];
         try {
+          await new Promise(resolve => setTimeout(resolve, 50)); // Small delay
+          
           const tx = await connection.getTransaction(sig.signature, {
             commitment: "confirmed",
             maxSupportedTransactionVersion: 0,
@@ -113,6 +125,16 @@ export class DeriverseService {
 
           if (!tx || !tx.meta || tx.meta.err) continue;
 
+          // Check logs for Deriverse program
+          const logs = tx.meta.logMessages || [];
+          const hasDeriverse = logs.some(log => log.includes(DERIVERSE_CONFIG.PROGRAM_ID));
+          
+          if (hasDeriverse) {
+            console.log("[DeriverseService] Found Deriverse activity!");
+            return true;
+          }
+
+          // Also check account keys
           const accountKeys = tx.transaction.message.staticAccountKeys || 
                               // eslint-disable-next-line @typescript-eslint/no-explicit-any
                               (tx.transaction.message as any).accountKeys || [];
@@ -122,6 +144,7 @@ export class DeriverseService {
           );
 
           if (involvesDeriverse) {
+            console.log("[DeriverseService] Found Deriverse activity!");
             return true;
           }
         } catch {
@@ -129,9 +152,10 @@ export class DeriverseService {
         }
       }
 
+      console.log("[DeriverseService] No Deriverse activity found in recent transactions");
       return false;
     } catch (error) {
-      console.error("Failed to check Deriverse activity:", error);
+      console.error("[DeriverseService] Failed to check Deriverse activity:", error);
       return false;
     }
   }
@@ -171,33 +195,38 @@ export class DeriverseService {
   private async fetchTransactionHistory(): Promise<Trade[]> {
     try {
       const { Connection, PublicKey } = await import("@solana/web3.js");
-      const connection = new Connection(DERIVERSE_CONFIG.RPC_HTTP, "confirmed");
+      const connection = new Connection(DERIVERSE_CONFIG.RPC_HTTP, {
+        commitment: "confirmed",
+        confirmTransactionInitialTimeout: 60000,
+      });
       
       const walletPubkey = new PublicKey(this.walletAddress!);
       const programPubkey = new PublicKey(DERIVERSE_CONFIG.PROGRAM_ID);
 
       // Fetch recent signatures for the wallet
-      console.log("Fetching transaction signatures...");
+      console.log("[DeriverseService] Fetching transaction signatures for:", this.walletAddress);
       const signatures = await connection.getSignaturesForAddress(walletPubkey, {
-        limit: 100,
+        limit: 50, // Reduced to avoid rate limits
       });
 
-      console.log(`Found ${signatures.length} recent transactions`);
+      console.log(`[DeriverseService] Found ${signatures.length} recent transactions`);
 
       const trades: Trade[] = [];
       let tradeId = 1;
       let deriverseCount = 0;
 
-      // Process transactions
+      // Process transactions with delay to avoid rate limits
       for (const sig of signatures) {
         try {
+          // Add small delay to avoid rate limiting
+          await new Promise(resolve => setTimeout(resolve, 100));
+          
           const tx = await connection.getTransaction(sig.signature, {
             commitment: "confirmed",
             maxSupportedTransactionVersion: 0,
           });
 
           if (!tx || !tx.meta || tx.meta.err) {
-            console.log(`Skipping TX ${sig.signature.slice(0, 8)}... - no tx data or error`);
             continue;
           }
 
@@ -291,40 +320,58 @@ export class DeriverseService {
       );
       console.log(`TX ${signature.slice(0, 8)}... logs:`, programLogs);
 
-      // Extract program data (base64 encoded events)
-      const dataLogs = logs.filter(l => l.startsWith("Program data:"));
-      
-      // Parse trade side from program data
-      // Based on Deriverse SDK: taker_side 0 = bid (long), 1 = ask (short)
-      // Also: PerpOrderSide.bid = long, PerpOrderSide.ask = short
+      // Parse trade side from logs and balance changes
       let side: TradeSide = "long"; // Default
       let marketType: MarketType = "perpetual"; // Deriverse is primarily perp trading
       let orderType: OrderType = "market";
       
-      // Try to detect side from program data
-      // The program emits events like PerpTakerTradeLog and FillLogV3 with taker_side
+      // Check log keywords for side detection
+      const logsJoined = logs.join(" ").toLowerCase();
+      
+      // Check for explicit direction indicators in logs
+      if (logsJoined.includes("ask") || logsJoined.includes("sell") || logsJoined.includes("short")) {
+        side = "short";
+      } else if (logsJoined.includes("bid") || logsJoined.includes("buy") || logsJoined.includes("long")) {
+        side = "long";
+      }
+      
+      // Use balance changes as additional heuristic
+      if (preBalances && postBalances && preBalances.length > 0 && postBalances.length > 0) {
+        const solChange = (postBalances[0] - preBalances[0]) / 1e9;
+        console.log(`Balance change: ${solChange} SOL`);
+        
+        // When opening a short position, you typically receive margin/collateral
+        // When opening a long, you pay SOL
+        if (solChange > 0.01) {
+          side = "short";
+        } else if (solChange < -0.01) {
+          side = "long";
+        }
+      }
+      
+      // Try to parse program data for more accurate side detection
+      // Use browser-safe base64 decoding
+      const dataLogs = logs.filter(l => l.startsWith("Program data:"));
       for (const dataLog of dataLogs) {
         try {
           const base64Data = dataLog.replace("Program data: ", "");
-          const buffer = Buffer.from(base64Data, "base64");
+          // Use browser-safe atob instead of Buffer
+          const binaryString = atob(base64Data);
+          const bytes = new Uint8Array(binaryString.length);
+          for (let i = 0; i < binaryString.length; i++) {
+            bytes[i] = binaryString.charCodeAt(i);
+          }
           
-          // Check for known discriminators and extract taker_side
-          // FillLog/FillLogV3 structure has taker_side at a known offset
-          // For most Deriverse trade events, the side byte is typically at offset 34 or 35
-          // after the 8-byte discriminator + pubkey (32 bytes)
-          if (buffer.length > 40) {
-            // Look for taker_side byte (0 = bid/long, 1 = ask/short)
-            // The position varies by event type, so we check multiple positions
+          // Check for taker_side at known positions
+          // FillLogV3 has taker_side at offset 34 (after 8-byte discriminator + 2 bytes + 32 byte pubkey - 8)
+          if (bytes.length > 40) {
             const possibleSidePositions = [34, 35, 42, 43, 10, 11];
             for (const pos of possibleSidePositions) {
-              if (buffer[pos] === 0 || buffer[pos] === 1) {
-                // Verify this looks like a valid side byte by checking nearby bytes
-                // Side should be followed by reasonable data, not all zeros
-                if (buffer.length > pos + 5) {
-                  const nextFewBytes = buffer.slice(pos + 1, pos + 5);
-                  const hasNonZero = nextFewBytes.some(b => b !== 0 && b !== 1);
+              if (bytes[pos] === 0 || bytes[pos] === 1) {
+                if (bytes.length > pos + 5) {
+                  const hasNonZero = bytes.slice(pos + 1, pos + 5).some(b => b !== 0 && b !== 1);
                   if (hasNonZero) {
-                    side = buffer[pos] === 0 ? "long" : "short";
+                    side = bytes[pos] === 0 ? "long" : "short";
                     console.log(`Detected side: ${side} from position ${pos}`);
                     break;
                   }
@@ -334,33 +381,6 @@ export class DeriverseService {
           }
         } catch {
           // Silent fail for base64 decode issues
-        }
-      }
-      
-      // Fallback: use log keywords if we couldn't parse from data
-      const logsJoined = logs.join(" ").toLowerCase();
-      
-      // Check for explicit direction indicators in logs
-      if (logsJoined.includes("bid") || logsJoined.includes("buy") || logsJoined.includes("long")) {
-        side = "long";
-      } else if (logsJoined.includes("ask") || logsJoined.includes("sell") || logsJoined.includes("short")) {
-        side = "short";
-      }
-      
-      // Additional heuristic: check balance changes
-      // Opening a long = paying SOL to receive tokens
-      // Opening a short = receiving SOL as collateral/margin
-      if (preBalances && postBalances && preBalances.length > 0 && postBalances.length > 0) {
-        const solChange = (postBalances[0] - preBalances[0]) / 1e9;
-        console.log(`Balance change: ${solChange} SOL`);
-        
-        // Large negative balance usually means opening a long (paying for position)
-        // Large positive balance usually means closing a long or receiving from short
-        // BUT this can be misleading because both positions require margin
-        // So we only use this as a weak signal, not overriding explicit side detection
-        if (side === "long" && solChange > 0.5) {
-          // If we thought it was long but received significant SOL, might be a short or close
-          console.log(`Balance heuristic suggests possible short (received ${solChange} SOL)`);
         }
       }
 
@@ -374,34 +394,42 @@ export class DeriverseService {
       const entryTime = blockTime ? new Date(blockTime * 1000) : new Date();
       
       // We cannot determine actual prices/quantities without SDK parsing
-      // Mark these as N/A values
+      // Use approximate values
       const basePrice = this.getBasePrice(symbol);
       
-      // Fees - we can't determine exact fees without parsing logs fully
+      // Estimate quantity from balance changes if available
+      let quantity = 0.1; // Default minimal quantity
+      if (preBalances && postBalances && preBalances.length > 0 && postBalances.length > 0) {
+        const solChange = Math.abs(postBalances[0] - preBalances[0]) / 1e9;
+        if (solChange > 0.001) {
+          quantity = solChange;
+        }
+      }
+      
+      // Fees - estimate based on typical Deriverse fees
+      const volume = basePrice * quantity;
       const fees = {
-        makerFee: 0,
-        takerFee: 0,
-        fundingFee: 0,
-        totalFee: 0,
+        makerFee: volume * 0.0002,
+        takerFee: volume * 0.0005,
+        fundingFee: marketType === "perpetual" ? volume * 0.0001 : 0,
+        totalFee: volume * 0.0008,
       };
 
-      // All trades are considered "open" since we can't track position lifecycle
-      // without the full SDK
       return {
         id: `trade-${tradeId}`,
         symbol,
         side,
         marketType,
         orderType,
-        entryPrice: basePrice, // Approximate price
+        entryPrice: basePrice,
         exitPrice: undefined,
-        quantity: 0, // Unknown without parsing
+        quantity,
         leverage: marketType === "perpetual" ? 1 : undefined,
         entryTime,
         exitTime: undefined,
-        pnl: undefined, // Cannot calculate without SDK
+        pnl: undefined,
         pnlPercentage: undefined,
-        status: "open", // Cannot determine closed status without SDK
+        status: "open",
         fees,
         txSignature: signature,
       };

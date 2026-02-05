@@ -57,22 +57,25 @@ function WalletStateHandler({ children }: { children: React.ReactNode }) {
   // Fetch live data when wallet connects
   const fetchLiveData = useCallback(async (walletAddress: string) => {
     setIsLoading(true);
+    console.log('[WalletProvider] Starting data fetch for:', walletAddress);
     try {
       const hasActivity = await deriverseService.setWallet(walletAddress);
+      console.log('[WalletProvider] Deriverse activity check:', hasActivity);
       
       const [trades, positions] = await Promise.all([
         deriverseService.getTradingHistory(),
         deriverseService.getPositions(),
       ]);
 
-      console.log(`Loaded ${trades.length} trades and ${positions.length} positions from Deriverse`);
+      console.log('[WalletProvider] Fetched data:', { trades: trades.length, positions: positions.length });
+      console.log('[WalletProvider] Trades:', trades);
       
       setTrades(trades.length > 0 ? trades : []);
       setPositions(positions.length > 0 ? positions : []);
       
       return { trades, positions, hasActivity };
     } catch (error) {
-      console.warn("Failed to fetch live data:", error);
+      console.warn("[WalletProvider] Failed to fetch live data:", error);
       setTrades([]);
       setPositions([]);
       return { trades: [], positions: [], hasActivity: false };

@@ -83,7 +83,7 @@ export const useTradingStore = create<TradingState>()(
       journalEntries: [],
       isLoading: false,
       error: null,
-      selectedTimeframe: "1M",
+      selectedTimeframe: "ALL",
 
       // Actions
       setConnected: (connected, address) =>
@@ -159,12 +159,12 @@ export const useTradingStore = create<TradingState>()(
     }),
     {
       name: "deriverse-trading-store",
-      // Only persist journal entries, filters, and timeframe - NOT trades/positions
+      // Only persist journal entries and filters - NOT trades/positions/timeframe
       // Trades and positions should be fetched fresh on each wallet connection
+      // Timeframe defaults to ALL to show all trades
       partialize: (state) => ({
         journalEntries: state.journalEntries,
         filters: state.filters,
-        selectedTimeframe: state.selectedTimeframe,
       }),
       // Skip hydration to avoid SSR mismatch issues
       skipHydration: true,
