@@ -9,7 +9,7 @@ import {
 } from "@solana/wallet-adapter-react";
 import { WalletModalProvider } from "@solana/wallet-adapter-react-ui";
 import { clusterApiUrl } from "@solana/web3.js";
-import { deriverseService, updateTradesPnL } from "@/lib/deriverse-service";
+import { deriverseService, updateTradesPnL } from "../../lib/deriverse-service";
 import { useTradingStore } from "@/store";
 import type { Trade } from "@/types";
 

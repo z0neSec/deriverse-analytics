@@ -12,6 +12,11 @@ export interface ClientData {
   tokens: Map<number, ClientTokenData>;
   spot: Map<number, ClientSpotData>;
   perp: Map<number, ClientPerpData>;
+  // Trade counts from direct RPC fallback
+  spotTrades?: number;
+  perpTrades?: number;
+  lpTrades?: number;
+  points?: number;
 }
 
 export interface ClientTokenData {

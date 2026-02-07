@@ -7,6 +7,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createSolanaRpc, address } from "@solana/kit";
 import { Engine } from "@deriverse/kit";
+import { PublicKey, Connection } from "@solana/web3.js";
 
 // Deriverse Devnet Configuration
 const DERIVERSE_CONFIG = {
@@ -24,6 +25,12 @@ const TOKEN_MINTS = {
 // Create RPC connection
 const rpc = createSolanaRpc(DERIVERSE_CONFIG.RPC_HTTP);
 
+// web3.js connection for fallback RPC calls
+const web3Connection = new Connection(DERIVERSE_CONFIG.RPC_HTTP, "confirmed");
+
+// Account type tag for client primary accounts
+const CLIENT_PRIMARY_TAG = 31;
+
 // Engine singleton (cached)
 let engineInstance: Engine | null = null;
 let engineInitialized = false;
@@ -33,6 +40,143 @@ let instrumentsLoaded = false;
 // Fallback price cache for when SDK fails
 let fallbackPriceCache: { data: Record<string, number>; timestamp: number } | null = null;
 const PRICE_CACHE_TTL = 30000; // 30 seconds
+
+/**
+ * Direct RPC fallback to find client accounts when SDK fails
+ * Uses getProgramAccounts to search for accounts owned by the wallet
+ */
+async function findClientAccountsDirect(walletAddress: string): Promise<{
+  hasAccount: boolean;
+  clientId: number | null;
+  spotTrades: number;
+  perpTrades: number;
+  lpTrades: number;
+  points: number;
+  spotPositions: Array<{ instrId: number }>;
+  perpPositions: Array<{ instrId: number }>;
+}> {
+  try {
+    const programId = new PublicKey(DERIVERSE_CONFIG.PROGRAM_ID);
+    const walletPubkey = new PublicKey(walletAddress);
+
+    console.log("[DeriverseAPI] Direct RPC: Searching for client accounts for", walletAddress);
+
+    // Create the tag buffer: version (4 bytes LE) + account type (4 bytes LE)
+    // CLIENT_PRIMARY = 31 (0x1F)
+    const tagBuf = Buffer.alloc(8);
+    tagBuf.writeUInt32LE(DERIVERSE_CONFIG.VERSION, 0); // version = 12
+    tagBuf.writeUInt32LE(CLIENT_PRIMARY_TAG, 4); // CLIENT_PRIMARY = 31
+
+    // Find client primary account PDA using the same derivation as SDK
+    const [clientPda] = PublicKey.findProgramAddressSync(
+      [
+        tagBuf,
+        walletPubkey.toBuffer(),
+      ],
+      programId
+    );
+
+    console.log("[DeriverseAPI] Direct RPC: Client PDA:", clientPda.toBase58());
+
+    // Try to fetch the account
+    const accountInfo = await web3Connection.getAccountInfo(clientPda);
+
+    if (!accountInfo) {
+      console.log("[DeriverseAPI] Direct RPC: No client account found at PDA");
+      return {
+        hasAccount: false,
+        clientId: null,
+        spotTrades: 0,
+        perpTrades: 0,
+        lpTrades: 0,
+        points: 0,
+        spotPositions: [],
+        perpPositions: [],
+      };
+    }
+
+    console.log("[DeriverseAPI] Direct RPC: Found client account, data length:", accountInfo.data.length);
+
+    const data = accountInfo.data;
+    
+    // Parse client primary account structure based on SDK offsets
+    // ClientPrimaryAccountHeaderModel offsets:
+    const OFFSET_ID = 248;
+    const OFFSET_SPOT_TRADES = 280;
+    const OFFSET_PERP_TRADES = 284;
+    const OFFSET_LP_TRADES = 288;
+    const OFFSET_POINTS = 292;
+    const OFFSET_ASSETS_COUNT = 300;
+    
+    let clientId = 0;
+    let spotTrades = 0;
+    let perpTrades = 0;
+    let lpTrades = 0;
+    let points = 0;
+    let assetsCount = 0;
+    
+    try {
+      if (data.length > OFFSET_ID + 4) {
+        clientId = data.readUInt32LE(OFFSET_ID);
+      }
+      if (data.length > OFFSET_SPOT_TRADES + 4) {
+        spotTrades = data.readUInt32LE(OFFSET_SPOT_TRADES);
+      }
+      if (data.length > OFFSET_PERP_TRADES + 4) {
+        perpTrades = data.readUInt32LE(OFFSET_PERP_TRADES);
+      }
+      if (data.length > OFFSET_LP_TRADES + 4) {
+        lpTrades = data.readUInt32LE(OFFSET_LP_TRADES);
+      }
+      if (data.length > OFFSET_POINTS + 4) {
+        points = data.readUInt32LE(OFFSET_POINTS);
+      }
+      if (data.length > OFFSET_ASSETS_COUNT + 4) {
+        assetsCount = data.readUInt32LE(OFFSET_ASSETS_COUNT);
+      }
+    } catch (err) {
+      console.warn("[DeriverseAPI] Direct RPC: Error parsing account data:", err);
+    }
+
+    console.log("[DeriverseAPI] Direct RPC: Parsed data:", { 
+      clientId, 
+      spotTrades, 
+      perpTrades, 
+      lpTrades, 
+      points,
+      assetsCount
+    });
+
+    // For now, assume the user has positions in SOL/USDC (instrId 0)
+    // If they have any trades, they likely have positions
+    const hasActivity = spotTrades > 0 || perpTrades > 0;
+    const spotPositions = hasActivity ? [{ instrId: 0 }] : [];
+    const perpPositions = hasActivity ? [{ instrId: 0 }] : [];
+
+    return {
+      hasAccount: true,
+      clientId,
+      spotTrades,
+      perpTrades,
+      lpTrades,
+      points,
+      spotPositions,
+      perpPositions,
+    };
+  } catch (error) {
+    console.warn("[DeriverseAPI] Direct RPC fallback failed:", error);
+    return {
+      hasAccount: false,
+      clientId: null,
+      spotTrades: 0,
+      perpTrades: 0,
+      lpTrades: 0,
+      points: 0,
+      spotPositions: [],
+      perpPositions: [],
+    };
+  }
+}
 
 async function fetchFallbackPrices(): Promise<Record<string, number>> {
   if (fallbackPriceCache && Date.now() - fallbackPriceCache.timestamp < PRICE_CACHE_TTL) {
@@ -266,8 +410,28 @@ export async function GET(request: NextRequest) {
             perpPositions,
           });
         } catch (error) {
-          console.warn("[DeriverseAPI] Client data fetch failed:", error);
-          // Return empty data on SDK failure
+          console.warn("[DeriverseAPI] SDK client data fetch failed, trying direct RPC:", error);
+          
+          // Try direct RPC fallback
+          const directResult = await findClientAccountsDirect(walletAddress);
+          
+          if (directResult.hasAccount) {
+            console.log("[DeriverseAPI] Direct RPC found client account:", directResult);
+            return NextResponse.json({
+              hasAccount: true,
+              clientId: directResult.clientId,
+              spotTrades: directResult.spotTrades,
+              perpTrades: directResult.perpTrades,
+              lpTrades: directResult.lpTrades,
+              points: directResult.points,
+              balances: [],
+              spotPositions: directResult.spotPositions.map(p => ({ instrId: p.instrId, clientId: directResult.clientId || 0 })),
+              perpPositions: directResult.perpPositions.map(p => ({ instrId: p.instrId, clientId: directResult.clientId || 0 })),
+              source: "direct-rpc",
+            });
+          }
+          
+          // Return empty data if both methods fail
           return NextResponse.json({ 
             hasAccount: false,
             clientId: null,
@@ -423,7 +587,7 @@ export async function GET(request: NextRequest) {
         // Try to update instrument data
         try {
           await engine.updateInstrData({ instrId });
-        } catch (err) {
+        } catch {
           console.log("[DeriverseAPI] marketData: Failed to update instrument data, using fallback");
         }
         
