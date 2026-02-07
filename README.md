@@ -85,7 +85,8 @@ src/
 │   └── ui/                # Reusable UI primitives
 ├── lib/
 │   ├── analytics.ts       # Metrics calculation functions
-│   ├── mock-data.ts       # Demo data generators
+│   ├── deriverse-service.ts # Deriverse SDK integration service
+│   ├── export.ts          # Data export utilities
 │   └── utils.ts           # Utility functions
 ├── store/
 │   └── trading-store.ts   # Zustand global state

@@ -11,6 +11,7 @@ import { WalletModalProvider } from "@solana/wallet-adapter-react-ui";
 import { clusterApiUrl } from "@solana/web3.js";
 import { deriverseService, updateTradesPnL } from "@/lib/deriverse-service";
 import { useTradingStore } from "@/store";
+import type { Trade } from "@/types";
 
 // Import wallet adapter styles
 import "@solana/wallet-adapter-react-ui/styles.css";
@@ -78,7 +79,7 @@ function WalletStateHandler({ children }: { children: React.ReactNode }) {
         const currentTrades = tradesRef.current;
         const updatedTrades = await updateTradesPnL(currentTrades);
         // Only update if there are actual changes
-        const hasChanges = updatedTrades.some((t, i) => 
+        const hasChanges = updatedTrades.some((t: Trade, i: number) => 
           t.pnl !== currentTrades[i]?.pnl || t.currentPrice !== currentTrades[i]?.currentPrice
         );
         if (hasChanges) {
