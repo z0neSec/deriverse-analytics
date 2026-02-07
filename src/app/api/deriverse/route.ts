@@ -671,6 +671,106 @@ export async function GET(request: NextRequest) {
         return NextResponse.json({ prices, source: usedFallback ? "coingecko" : "deriverse-sdk" });
       }
 
+      case "tradeHistory": {
+        // Fetch real transaction history from Solana for this wallet
+        if (!walletAddress) {
+          return NextResponse.json({ error: "Missing wallet address" }, { status: 400 });
+        }
+
+        try {
+          const walletPubkey = new PublicKey(walletAddress);
+          
+          console.log("[DeriverseAPI] Fetching transaction history for", walletAddress);
+          
+          // Get transaction signatures for this wallet
+          const signatures = await web3Connection.getSignaturesForAddress(
+            walletPubkey,
+            { limit: 100 },
+            "confirmed"
+          );
+          
+          console.log(`[DeriverseAPI] Found ${signatures.length} total wallet transactions`);
+          
+          const trades: Array<{
+            signature: string;
+            timestamp: number;
+            slot: number;
+            type: string;
+            success: boolean;
+            fee: number;
+            instrId?: number;
+            side?: string;
+            size?: number;
+            price?: number;
+          }> = [];
+          
+          // Filter and parse transactions that involve the Deriverse program
+          for (const sig of signatures) {
+            try {
+              const tx = await web3Connection.getTransaction(sig.signature, {
+                maxSupportedTransactionVersion: 0,
+                commitment: "confirmed",
+              });
+              
+              if (!tx || !tx.transaction) continue;
+              
+              // Check if this transaction involves the Deriverse program
+              // For v0 transactions with Address Lookup Tables, we need to check staticAccountKeys only
+              const message = tx.transaction.message;
+              let programIds: string[] = [];
+              
+              try {
+                // Try to get account keys (may fail for v0 txs with unresolved ALTs)
+                const accountKeys = message.getAccountKeys();
+                programIds = accountKeys.staticAccountKeys.map(k => k.toBase58());
+              } catch {
+                // Fallback: check the static account keys directly
+                // For VersionedMessage, staticAccountKeys is an array
+                const staticKeys = (message as { staticAccountKeys?: Array<{ toBase58: () => string }> }).staticAccountKeys;
+                if (staticKeys) {
+                  programIds = staticKeys.map(k => k.toBase58());
+                }
+              }
+              
+              if (!programIds.includes(DERIVERSE_CONFIG.PROGRAM_ID)) {
+                continue; // Not a Deriverse transaction
+              }
+              
+              // Parse the transaction to extract trade info
+              const tradeInfo = parseDeriverseTransaction(tx);
+              
+              if (tradeInfo) {
+                trades.push({
+                  signature: sig.signature,
+                  timestamp: sig.blockTime || 0,
+                  slot: sig.slot,
+                  success: !sig.err,
+                  fee: tx.meta?.fee || 0,
+                  ...tradeInfo,
+                });
+              }
+            } catch (txErr) {
+              // Skip transactions we can't parse
+              console.log(`[DeriverseAPI] Could not parse tx ${sig.signature.slice(0, 8)}:`, txErr);
+            }
+          }
+          
+          console.log(`[DeriverseAPI] Found ${trades.length} Deriverse trades`);
+          
+          return NextResponse.json({ 
+            trades,
+            totalWalletTxs: signatures.length,
+            source: "solana-rpc"
+          });
+        } catch (historyErr) {
+          console.error("[DeriverseAPI] Failed to fetch trade history:", historyErr);
+          return NextResponse.json({ 
+            trades: [],
+            error: historyErr instanceof Error ? historyErr.message : "Failed to fetch history"
+          });
+        }
+      }
+
       default:
         return NextResponse.json({ error: "Unknown action" }, { status: 400 });
     }
@@ -695,4 +795,125 @@ function getSymbolFromInstrId(instrId: number): string {
     6: "PYTH/USDC",
   };
   return symbols[instrId] || `UNKNOWN-${instrId}/USDC`;
+}
+
+/**
+ * Parse a Deriverse transaction to extract trade information
+ * Uses transaction logs and balance changes to determine trade details
+ */
+function parseDeriverseTransaction(
+  tx: Awaited<ReturnType<typeof web3Connection.getTransaction>>
+): { type: string; instrId?: number; side?: string; size?: number; price?: number; solChange?: number } | null {
+  if (!tx || !tx.transaction || !tx.meta) return null;
+
+  const logMessages = tx.meta.logMessages || [];
+  
+  // Check if this is a Deriverse program invocation
+  const hasDeriverseProgram = logMessages.some(log => 
+    log.includes(DERIVERSE_CONFIG.PROGRAM_ID) || 
+    log.includes("Deriverse") ||
+    log.includes("deriverse")
+  );
+  
+  if (!hasDeriverseProgram) {
+    // Try to check instruction data as fallback
+    const message = tx.transaction.message;
+    try {
+      const staticKeys = (message as { staticAccountKeys?: Array<{ toBase58: () => string }> }).staticAccountKeys;
+      if (staticKeys) {
+        const programIds = staticKeys.map(k => k.toBase58());
+        if (!programIds.includes(DERIVERSE_CONFIG.PROGRAM_ID)) {
+          return null;
+        }
+      }
+    } catch {
+      return null;
+    }
+  }
+  
+  // Parse logs to determine transaction type
+  let type = "order";
+  let side: string | undefined;
+  let isPerp = false;
+  let instrId: number | undefined = 0; // Default to SOL/USDC
+  
+  for (const log of logMessages) {
+    const logLower = log.toLowerCase();
+    
+    // Detect market type
+    if (logLower.includes('perp') || logLower.includes('perpetual')) {
+      isPerp = true;
+    }
+    
+    // Detect side from logs
+    if (logLower.includes('buy') || logLower.includes('long') || logLower.includes('bid')) {
+      side = "buy";
+    } else if (logLower.includes('sell') || logLower.includes('short') || logLower.includes('ask')) {
+      side = "sell";
+    }
+    
+    // Detect operation type
+    if (logLower.includes('place') || logLower.includes('order')) {
+      type = isPerp ? "perpOrder" : "spotOrder";
+    } else if (logLower.includes('cancel')) {
+      type = "cancelOrder";
+    } else if (logLower.includes('fill') || logLower.includes('match')) {
+      type = "trade";
+    } else if (logLower.includes('deposit')) {
+      type = "deposit";
+    } else if (logLower.includes('withdraw')) {
+      type = "withdraw";
+    } else if (logLower.includes('close') || logLower.includes('position')) {
+      type = "closePosition";
+    }
+    
+    // Try to extract instrument ID from logs
+    const instrMatch = log.match(/instr(?:ument)?[_\s]*(?:id)?[:\s=]*(\d+)/i);
+    if (instrMatch) {
+      instrId = parseInt(instrMatch[1], 10);
+    }
+  }
+  
+  // Try to extract balance changes to determine size and direction
+  // The first account is usually the signer/wallet
+  let solChange = 0;
+  if (tx.meta.preBalances && tx.meta.postBalances && tx.meta.preBalances.length > 0) {
+    // Calculate SOL change for the wallet (first account)
+    const preBal = tx.meta.preBalances[0];
+    const postBal = tx.meta.postBalances[0];
+    const fee = tx.meta.fee || 0;
+    
+    // Adjust for fee to get actual balance change
+    solChange = (postBal - preBal + fee) / 1e9; // Convert lamports to SOL
+    
+    // If SOL decreased significantly (not just fees), likely a buy/deposit
+    // If SOL increased, likely a sell/withdrawal
+    if (!side && Math.abs(solChange) > 0.001) {
+      side = solChange < 0 ? "buy" : "sell";
+    }
+  }
+  
+  // Check token balance changes for more accurate trade info
+  let tokenChange = 0;
+  if (tx.meta.preTokenBalances && tx.meta.postTokenBalances) {
+    for (let i = 0; i < tx.meta.postTokenBalances.length; i++) {
+      const post = tx.meta.postTokenBalances[i];
+      const pre = tx.meta.preTokenBalances.find(p => p.accountIndex === post.accountIndex);
+      
+      if (pre && post && post.uiTokenAmount && pre.uiTokenAmount) {
+        const change = (post.uiTokenAmount.uiAmount || 0) - (pre.uiTokenAmount.uiAmount || 0);
+        if (Math.abs(change) > tokenChange) {
+          tokenChange = Math.abs(change);
+        }
+      }
+    }
+  }
+  
+  return {
+    type,
+    instrId,
+    side,
+    size: tokenChange > 0 ? tokenChange : undefined,
+    solChange: Math.abs(solChange) > 0.001 ? solChange : undefined,
+  };
 }
