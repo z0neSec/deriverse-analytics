@@ -144,7 +144,7 @@ docker run -p 3000:3000 deriverse-analytics
 
 This project was built for the **Deriverse Hackathon** with the goal of creating:
 
-> "A comprehensive trading analytics solution for Deriverse, including a professional trading journal and portfolio analysis for active traders."
+> "A comprehensive trading analytics solution for Deriverse, including a professional trading journal and portfolio analysis for active traders"
 
 ### Features Implemented
 
