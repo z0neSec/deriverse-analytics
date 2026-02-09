@@ -30,7 +30,7 @@ Deriverse Analytics is a professional-grade trading analytics dashboard that con
 ### Dashboard
 The main dashboard provides an at-a-glance view of your trading performance with key metrics, PnL charts, and open positions.
 
-![Dashboard Screenshot](./screenshots/dashboard.png)
+![Dashboard Screenshot](./screenshots/dashboard.jpg)
 
 *Dashboard showing total PnL, win rate, volume metrics, cumulative PnL chart, and performance by symbol*
 
@@ -39,7 +39,7 @@ The main dashboard provides an at-a-glance view of your trading performance with
 ### Portfolio Overview
 Track your portfolio allocation, total trading volume, and position distribution across different assets.
 
-![Portfolio Screenshot](./screenshots/portfolio.png)
+![Portfolio Screenshot](./screenshots/portfolio.jpg)
 
 *Portfolio page with trading volume stats, open positions, allocation breakdown, and cumulative PnL*
 
@@ -48,7 +48,7 @@ Track your portfolio allocation, total trading volume, and position distribution
 ### Trade History
 Complete history of all trades with filtering, sorting, and the ability to export data.
 
-![Trade History Screenshot](./screenshots/history.png)
+![Trade History Screenshot](./screenshots/history.jpg)
 
 *Trade history table with date, symbol, side, entry/exit prices, PnL, and export options*
 
@@ -57,7 +57,7 @@ Complete history of all trades with filtering, sorting, and the ability to expor
 ### Analytics
 Deep dive into your trading patterns with time-based analysis, weekday performance, and advanced metrics.
 
-![Analytics Screenshot](./screenshots/analytics.png)
+![Analytics Screenshot](./screenshots/analytics.jpg)
 
 *Analytics page showing hourly performance heatmap, weekday analysis, long/short ratio, and radar charts*
 
@@ -66,7 +66,7 @@ Deep dive into your trading patterns with time-based analysis, weekday performan
 ### Performance Analysis
 Detailed performance metrics including session-based analysis (Asian/European/American markets) and order type breakdown.
 
-![Performance Screenshot](./screenshots/performance.png)
+![Performance Screenshot](./screenshots/performance.jpg)
 
 *Performance page with cumulative PnL, drawdown chart, hourly performance, and session metrics*
 
@@ -75,7 +75,7 @@ Detailed performance metrics including session-based analysis (Asian/European/Am
 ### Fee Analysis
 Track your trading fees over time with detailed breakdown by type (maker, taker, funding).
 
-![Fees Screenshot](./screenshots/fees.png)
+![Fees Screenshot](./screenshots/fees.jpg)
 
 *Fee analysis with total fees, cumulative fee chart, and fee composition breakdown*
 
@@ -84,7 +84,7 @@ Track your trading fees over time with detailed breakdown by type (maker, taker,
 ### Trading Journal
 Document your trades with notes, mood tracking, tags, and lessons learned.
 
-![Journal Screenshot](./screenshots/journal.png)
+![Journal Screenshot](./screenshots/journal.jpg)
 
 *Trading journal with trade annotations, mood indicators, custom tags, and lesson tracking*
 
@@ -93,7 +93,7 @@ Document your trades with notes, mood tracking, tags, and lessons learned.
 ### Settings
 Configure your dashboard preferences and wallet settings.
 
-![Settings Screenshot](./screenshots/settings.png)
+![Settings Screenshot](./screenshots/settings.jpg)
 
 *Settings page with wallet info, display preferences, and data management options*
 
