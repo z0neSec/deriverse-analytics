@@ -4,10 +4,13 @@
 
 Built for the Deriverse Hackathon - A comprehensive trading analytics solution including a professional trading journal and portfolio analysis for active traders on Solana.
 
+🌐 **Live Demo**: [https://deriverse-analytics-one.vercel.app](https://deriverse-analytics-one.vercel.app)
+
 ![Deriverse Analytics](https://img.shields.io/badge/Solana-Devnet-9945FF?style=flat-square&logo=solana)
 ![Next.js](https://img.shields.io/badge/Next.js-16-black?style=flat-square&logo=next.js)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5.0-blue?style=flat-square&logo=typescript)
 ![React](https://img.shields.io/badge/React-19-61DAFB?style=flat-square&logo=react)
+[![Deployed on Vercel](https://img.shields.io/badge/Deployed%20on-Vercel-black?style=flat-square&logo=vercel)](https://deriverse-analytics-one.vercel.app)
 
 ---
 
