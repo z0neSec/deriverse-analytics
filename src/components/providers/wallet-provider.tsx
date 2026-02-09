@@ -113,13 +113,15 @@ function WalletStateHandler({ children }: { children: React.ReactNode }) {
       const hasActivity = await deriverseService.setWallet(walletAddress);
       console.log('[WalletProvider] Deriverse activity check:', hasActivity);
       
-      const [trades, positions] = await Promise.all([
-        deriverseService.getTradingHistory(),
-        deriverseService.getPositions(),
-      ]);
+      // Fetch trades first (needed for positions fallback)
+      const trades = await deriverseService.getTradingHistory();
+      console.log('[WalletProvider] Fetched trades:', trades.length);
+      
+      // Then fetch positions (uses cached trades if SDK fails)
+      const positions = await deriverseService.getPositions();
+      console.log('[WalletProvider] Fetched positions:', positions.length);
 
       console.log('[WalletProvider] Fetched data:', { trades: trades.length, positions: positions.length });
-      console.log('[WalletProvider] Trades:', trades);
       
       setTrades(trades.length > 0 ? trades : []);
       setPositions(positions.length > 0 ? positions : []);

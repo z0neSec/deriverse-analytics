@@ -538,11 +538,19 @@ export class DeriverseService {
     }
 
     console.log(`[DeriverseService] Fetched ${trades.length} trades`);
+    
+    // Cache trades for getPositions to use
+    this.cachedTrades = trades;
+    
     return trades;
   }
 
+  // Cached trades for deriving positions
+  private cachedTrades: Trade[] = [];
+
   /**
    * Fetch current open positions
+   * Since SDK fails, derive positions from open trades
    */
   async getPositions(): Promise<Position[]> {
     if (!this.walletAddress || !this.clientData?.hasAccount) {
@@ -552,16 +560,27 @@ export class DeriverseService {
     const positions: Position[] = [];
     const prices = await fetchLivePrices();
 
-    // Fetch perp positions
+    // First try SDK method
+    let sdkFailed = false;
     for (const perpPos of this.clientData.perpPositions) {
       try {
         const response = await fetch(
           `${API_BASE}?action=perpOrders&wallet=${this.walletAddress}&instrId=${perpPos.instrId}`
         );
         
-        if (!response.ok) continue;
+        if (!response.ok) {
+          sdkFailed = true;
+          continue;
+        }
         
         const ordersData: PerpOrdersResponse = await response.json();
+        
+        // Check if SDK returned error
+        if ('sdkError' in ordersData) {
+          sdkFailed = true;
+          continue;
+        }
+        
         const position = ordersData.position;
         
         if (position && position.perps !== 0) {
@@ -592,7 +611,42 @@ export class DeriverseService {
         }
       } catch (error) {
         console.error(`[DeriverseService] Failed to fetch perp position for instr ${perpPos.instrId}:`, error);
+        sdkFailed = true;
       }
+    }
+
+    // If SDK failed and we have no positions, derive from cached open trades
+    if (sdkFailed && positions.length === 0 && this.cachedTrades.length > 0) {
+      console.log("[DeriverseService] SDK failed, deriving positions from open trades");
+      
+      const openTrades = this.cachedTrades.filter(t => t.status === 'open');
+      
+      for (const trade of openTrades) {
+        const priceData = prices[trade.symbol];
+        // Ensure currentPrice always has a value - use entryPrice as final fallback
+        const currentPrice = priceData?.midPrice || priceData?.lastPrice || trade.currentPrice || trade.entryPrice;
+        const isLong = trade.side === 'long';
+        const unrealizedPnl = isLong 
+          ? (currentPrice - trade.entryPrice) * trade.quantity
+          : (trade.entryPrice - currentPrice) * trade.quantity;
+
+        positions.push({
+          id: `pos-${trade.id}`,
+          symbol: trade.symbol,
+          marketType: trade.marketType,
+          side: trade.side,
+          entryPrice: trade.entryPrice,
+          currentPrice: currentPrice,
+          quantity: trade.quantity,
+          leverage: trade.leverage || 1,
+          unrealizedPnl,
+          unrealizedPnlPercentage: trade.entryPrice > 0 ? (unrealizedPnl / (trade.entryPrice * trade.quantity)) * 100 : 0,
+          margin: trade.entryPrice * trade.quantity / (trade.leverage || 1),
+          openTime: trade.entryTime,
+        });
+      }
+      
+      console.log(`[DeriverseService] Derived ${positions.length} positions from open trades`);
     }
 
     return positions;
