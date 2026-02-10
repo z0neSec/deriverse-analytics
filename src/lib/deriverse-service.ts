@@ -424,20 +424,19 @@ export class DeriverseService {
       }
     }
 
-    // If SDK orders failed but we know user has trades from direct RPC,
-    // fetch real transaction history from Solana instead of synthetic data
-    if (trades.length === 0 && sdkOrdersFailed && this.clientData) {
-      const spotTradesCount = this.clientData.spotTrades || 0;
-      const perpTradesCount = this.clientData.perpTrades || 0;
-      const totalKnownTrades = spotTradesCount + perpTradesCount;
+    // Always fetch real transaction history from Solana to include closed trades
+    // This ensures we show historical data even when positions are closed
+    const spotTradesCount = this.clientData?.spotTrades || 0;
+    const perpTradesCount = this.clientData?.perpTrades || 0;
+    const totalKnownTrades = spotTradesCount + perpTradesCount;
+    
+    if (totalKnownTrades > 0 || trades.length === 0) {
+      console.log(`[DeriverseService] Fetching transaction history (${totalKnownTrades} known trades, ${trades.length} from positions)`);
       
-      if (totalKnownTrades > 0) {
-        console.log(`[DeriverseService] SDK failed but found ${totalKnownTrades} trades via direct RPC, fetching real tx history`);
-        
-        try {
-          // Fetch real transaction history from Solana
-          const historyResponse = await fetch(
-            `${API_BASE}?action=tradeHistory&wallet=${this.walletAddress}`
+      try {
+        // Fetch real transaction history from Solana
+        const historyResponse = await fetch(
+          `${API_BASE}?action=tradeHistory&wallet=${this.walletAddress}`
           );
           
           if (historyResponse.ok) {
@@ -534,7 +533,6 @@ export class DeriverseService {
         } catch (historyErr) {
           console.error("[DeriverseService] Failed to fetch real history:", historyErr);
         }
-      }
     }
 
     console.log(`[DeriverseService] Fetched ${trades.length} trades`);
