@@ -633,7 +633,8 @@ export async function GET(request: NextRequest) {
       }
 
       case "prices": {
-        // Get all current prices from instruments
+        // Always fetch real-time prices from CoinGecko as primary source
+        // SDK instrument prices are often stale or empty on devnet
         const prices: Record<string, { 
           lastPrice: number; 
           bestBid: number; 
@@ -641,40 +642,45 @@ export async function GET(request: NextRequest) {
           midPrice: number;
         }> = {};
 
-        // Try to load instrument data from SDK
-        let usedFallback = false;
+        // Fetch real prices from CoinGecko
+        const fallbackPrices = await fetchFallbackPrices();
         
-        if (engine.instruments && engine.instruments.size > 0) {
+        // Convert to expected format
+        for (const [symbol, price] of Object.entries(fallbackPrices)) {
+          prices[symbol] = {
+            lastPrice: price,
+            bestBid: price * 0.999, // Simulate small spread
+            bestAsk: price * 1.001,
+            midPrice: price,
+          };
+        }
+
+        // Try to enhance with SDK prices if available and valid
+        let hasValidSdkPrices = false;
+        if (engine && engine.instruments && engine.instruments.size > 0) {
           for (const [id, instr] of engine.instruments) {
             const symbol = getSymbolFromInstrId(id);
-            const midPrice = (instr.header.bestBid + instr.header.bestAsk) / 2;
-            prices[symbol] = {
-              lastPrice: instr.header.lastPx,
-              bestBid: instr.header.bestBid,
-              bestAsk: instr.header.bestAsk,
-              midPrice: midPrice || instr.header.lastPx,
-            };
-          }
-        }
-        
-        // If SDK instruments are empty, use fallback prices
-        if (Object.keys(prices).length === 0) {
-          console.log("[DeriverseAPI] No SDK prices available, using CoinGecko fallback");
-          usedFallback = true;
-          const fallbackPrices = await fetchFallbackPrices();
-          
-          // Convert fallback prices to expected format
-          for (const [symbol, price] of Object.entries(fallbackPrices)) {
-            prices[symbol] = {
-              lastPrice: price,
-              bestBid: price * 0.999, // Simulate small spread
-              bestAsk: price * 1.001,
-              midPrice: price,
-            };
+            // Only use SDK price if it's valid (> 0)
+            if (instr.header.lastPx > 0 || instr.header.bestBid > 0) {
+              const midPrice = (instr.header.bestBid + instr.header.bestAsk) / 2;
+              prices[symbol] = {
+                lastPrice: instr.header.lastPx || midPrice,
+                bestBid: instr.header.bestBid,
+                bestAsk: instr.header.bestAsk,
+                midPrice: midPrice || instr.header.lastPx,
+              };
+              hasValidSdkPrices = true;
+            }
           }
         }
 
-        return NextResponse.json({ prices, source: usedFallback ? "coingecko" : "deriverse-sdk" });
+        console.log("[DeriverseAPI] Prices response:", { 
+          source: hasValidSdkPrices ? "deriverse-sdk" : "coingecko",
+          symbols: Object.keys(prices),
+          solPrice: prices["SOL/USDC"]?.midPrice 
+        });
+
+        return NextResponse.json({ prices, source: hasValidSdkPrices ? "deriverse-sdk" : "coingecko" });
       }
 
       case "tradeHistory": {
