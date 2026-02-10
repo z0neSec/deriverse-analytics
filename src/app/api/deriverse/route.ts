@@ -530,19 +530,25 @@ export async function GET(request: NextRequest) {
             instrId,
           });
 
-          // Extract position data
+          // Deriverse uses raw token units:
+          // - SOL/perps: 9 decimals (divide by 1e9)
+          // - USDC/funds: 6 decimals (divide by 1e6)
+          const SOL_DECIMALS = 1e9;
+          const USDC_DECIMALS = 1e6;
+
+          // Extract and convert position data to human-readable values
           const position = {
-            perps: ordersInfo.perps,
-            funds: ordersInfo.funds,
-            inOrdersPerps: ordersInfo.inOrdersPerps,
-            inOrdersFunds: ordersInfo.inOrdersFunds,
-            fees: ordersInfo.fees,
-            rebates: ordersInfo.rebates,
-            result: ordersInfo.result, // Realized PnL
-            cost: ordersInfo.cost, // Position cost
+            perps: ordersInfo.perps / SOL_DECIMALS,
+            funds: ordersInfo.funds / USDC_DECIMALS,
+            inOrdersPerps: ordersInfo.inOrdersPerps / SOL_DECIMALS,
+            inOrdersFunds: ordersInfo.inOrdersFunds / USDC_DECIMALS,
+            fees: ordersInfo.fees / USDC_DECIMALS,
+            rebates: ordersInfo.rebates / USDC_DECIMALS,
+            result: ordersInfo.result / USDC_DECIMALS, // Realized PnL
+            cost: ordersInfo.cost / USDC_DECIMALS, // Position cost in USDC
             leverage: ordersInfo.mask & 0xFF, // First byte is leverage
-            fundingFunds: ordersInfo.fundingFunds,
-            socLossFunds: ordersInfo.socLossFunds,
+            fundingFunds: ordersInfo.fundingFunds / USDC_DECIMALS,
+            socLossFunds: ordersInfo.socLossFunds / USDC_DECIMALS,
           };
 
           if (ordersInfo.bidsCount === 0 && ordersInfo.asksCount === 0) {
@@ -563,15 +569,15 @@ export async function GET(request: NextRequest) {
             bids: orders.bids.map(o => ({
               orderId: o.orderId,
               line: o.line, // Price level reference
-              quantity: o.qty,
-              filled: o.sum,
+              quantity: o.qty / SOL_DECIMALS, // Convert to SOL
+              filled: o.sum / SOL_DECIMALS,
               timestamp: o.time,
             })),
             asks: orders.asks.map(o => ({
               orderId: o.orderId,
               line: o.line, // Price level reference
-              quantity: o.qty,
-              filled: o.sum,
+              quantity: o.qty / SOL_DECIMALS, // Convert to SOL
+              filled: o.sum / SOL_DECIMALS,
               timestamp: o.time,
             })),
           });
