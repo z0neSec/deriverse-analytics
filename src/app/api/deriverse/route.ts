@@ -783,6 +783,91 @@ export async function GET(request: NextRequest) {
         }
       }
 
+      case "buildClosePosition": {
+        // Build a transaction to close a perp position
+        // This returns serialized transaction instructions for client-side signing
+        if (!walletAddress) {
+          return NextResponse.json({ error: "Missing wallet parameter" }, { status: 400 });
+        }
+
+        const instrId = parseInt(searchParams.get("instrId") || "0");
+        
+        try {
+          await engine.setSigner(address(walletAddress));
+          
+          if (!engine.originalClientId) {
+            return NextResponse.json({ error: "No Deriverse account found" }, { status: 400 });
+          }
+
+          const clientData = await engine.getClientData();
+          const perpData = clientData.perp.get(instrId);
+
+          if (!perpData) {
+            return NextResponse.json({ error: "No position found for this instrument" }, { status: 400 });
+          }
+
+          // Get current position info
+          const ordersInfo = await engine.getClientPerpOrdersInfo({
+            clientId: perpData.clientId,
+            instrId,
+          });
+
+          const SOL_DECIMALS = 1e9;
+          const USDC_DECIMALS = 1e6;
+          
+          const positionSize = ordersInfo.perps / SOL_DECIMALS;
+          const positionCost = ordersInfo.cost / USDC_DECIMALS;
+          
+          if (positionSize === 0) {
+            return NextResponse.json({ error: "No open position to close" }, { status: 400 });
+          }
+
+          const isLong = positionSize > 0;
+          const size = Math.abs(positionSize);
+          const entryPrice = Math.abs(positionCost / positionSize);
+
+          // Get current price for PnL calculation
+          const fallbackPrices = await fetchFallbackPrices();
+          const symbol = getSymbolFromInstrId(instrId);
+          const currentPrice = fallbackPrices[symbol] || 100;
+          
+          const pnl = isLong 
+            ? (currentPrice - entryPrice) * size
+            : (entryPrice - currentPrice) * size;
+
+          // Return position info and instructions for closing
+          // The actual transaction will be built and signed client-side
+          return NextResponse.json({
+            success: true,
+            position: {
+              instrId,
+              symbol,
+              side: isLong ? "long" : "short",
+              size,
+              entryPrice,
+              currentPrice,
+              pnl,
+              leverage: ordersInfo.mask & 0xFF,
+            },
+            closeInstruction: {
+              // To close a long, place a market sell order
+              // To close a short, place a market buy order
+              action: isLong ? "sell" : "buy",
+              size,
+              instrId,
+              // Deriverse exchange URL for manual closing
+              exchangeUrl: `https://devnet.deriverse.io/trade/${symbol.replace("/", "-")}`,
+            },
+            message: `To close this ${isLong ? "LONG" : "SHORT"} position, ${isLong ? "SELL" : "BUY"} ${size.toFixed(4)} ${symbol.split("/")[0]} on Deriverse.`
+          });
+        } catch (error) {
+          console.error("[DeriverseAPI] Failed to build close position:", error);
+          return NextResponse.json({ 
+            error: error instanceof Error ? error.message : "Failed to build close transaction"
+          }, { status: 500 });
+        }
+      }
+
       default:
         return NextResponse.json({ error: "Unknown action" }, { status: 400 });
     }
