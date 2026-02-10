@@ -9,11 +9,11 @@ import { createSolanaRpc, address } from "@solana/kit";
 import { Engine } from "@deriverse/kit";
 import { PublicKey, Connection } from "@solana/web3.js";
 
-// Deriverse Devnet Configuration
+// Deriverse Devnet Configuration (Official values from Deriverse team)
 const DERIVERSE_CONFIG = {
-  PROGRAM_ID: "Drvrseg8AQLP8B96DBGmHRjFGviFNYTkHueY9g3k27Gu",
+  PROGRAM_ID: "CDESjex4EDBKLwx9ZPzVbjiHEHatasb5fhSJZMzNfvw2",
   RPC_HTTP: "https://api.devnet.solana.com",
-  VERSION: 12,
+  VERSION: 6,
 };
 
 // Token mints on Deriverse Devnet
