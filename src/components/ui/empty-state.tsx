@@ -91,12 +91,12 @@ export function EmptyState({
             <p>
               Start trading on{" "}
               <a
-                href="https://deriverse.io"
+                href="https://devnet.deriverse.io"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-blue-400 hover:text-blue-300 font-medium underline underline-offset-2 transition-colors"
               >
-                Deriverse
+                Deriverse Devnet
               </a>{" "}
               to see your analytics here.
             </p>

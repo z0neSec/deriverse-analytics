@@ -318,9 +318,10 @@ This dashboard is built for [Deriverse](https://deriverse.gitbook.io/deriverse-v
 |---------|---------|
 | **Spot Trading** | Direct token swaps |
 | **Perpetual Futures** | Leveraged perpetual contracts |
-| **Program ID** | `Drvrseg8AQLP8B96DBGmHRjFGviFNYTkHueY9g3k27Gu` |
+| **Program ID** | `CDESjex4EDBKLwx9ZPzVbjiHEHatasb5fhSJZMzNfvw2` |
+| **VERSION** | 6 |
 | **Network** | Solana Devnet |
-| **Exchange** | [alpha.deriverse.io](https://alpha.deriverse.io) |
+| **Exchange** | [devnet.deriverse.io](https://devnet.deriverse.io) |
 
 ### Supported Features
 - ✅ Wallet connection via Solana Wallet Adapter

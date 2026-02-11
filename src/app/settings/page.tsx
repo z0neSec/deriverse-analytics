@@ -98,7 +98,7 @@ export default function SettingsPage() {
               <div>
                 <label className="block text-[10px] text-slate-500 mb-1 uppercase tracking-wider">Program ID</label>
                 <p className="text-slate-200 font-mono text-sm">
-                  Drvrseg8...27Gu
+                  CDESjex4...fw2
                 </p>
               </div>
             </div>

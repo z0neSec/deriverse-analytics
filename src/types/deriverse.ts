@@ -124,12 +124,12 @@ export enum DeriverseMarketType {
   Options = 2,
 }
 
-// Network configuration presets
+// Network configuration presets (Official Deriverse v1 on Solana Devnet)
 export const DERIVERSE_DEVNET_CONFIG: DeriverseConfig = {
-  programId: "Drvrseg8AQLP8B96DBGmHRjFGviFNYTkHueY9g3k27Gu",
+  programId: "CDESjex4EDBKLwx9ZPzVbjiHEHatasb5fhSJZMzNfvw2",
   rpcHttp: "https://api.devnet.solana.com",
   rpcWs: "wss://api.devnet.solana.com",
-  version: 12,
+  version: 6,
 };
 
 // Common token mints for devnet

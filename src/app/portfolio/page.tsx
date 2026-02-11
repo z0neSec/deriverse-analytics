@@ -80,7 +80,7 @@ export default function PortfolioPage() {
       ) : trades.length === 0 ? (
         <EmptyState 
           title="No Trading Data"
-          description="No Deriverse trades found for this wallet. Try trading on alpha.deriverse.io first!"
+          description="No Deriverse trades found for this wallet. Try trading on devnet.deriverse.io first!"
         />
       ) : filteredTrades.length === 0 ? (
         <EmptyState 
