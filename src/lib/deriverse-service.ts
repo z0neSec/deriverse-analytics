@@ -406,10 +406,69 @@ export class DeriverseService {
       }
     }
 
-    // SDK now works properly - we get accurate position data from perpOrders/spotOrders
-    // The SDK provides: position size, entry cost, PnL (result), leverage, fees, etc.
+    // SDK provides accurate data for OPEN positions
+    // But we also need to fetch CLOSED trades from transaction history
+    // The SDK doesn't provide historical closed trade data
     
-    console.log(`[DeriverseService] SDK provided ${trades.length} trades/positions`);
+    console.log(`[DeriverseService] SDK provided ${trades.length} open positions/orders`);
+    
+    // Fetch closed trades from transaction history
+    try {
+      const historyResponse = await fetch(
+        `${API_BASE}?action=tradeHistory&wallet=${this.walletAddress}`
+      );
+      
+      if (historyResponse.ok) {
+        const historyData = await historyResponse.json();
+        console.log(`[DeriverseService] Got ${historyData.trades?.length || 0} transactions from history`);
+        
+        const currentPrice = prices["SOL/USDC"]?.midPrice || prices["SOL/USDC"]?.lastPrice || 0;
+        
+        // Only add CLOSED trades (closePosition type) from transaction history
+        for (const tx of historyData.trades || []) {
+          // Only include closePosition transactions - these are actual closed trades
+          if (tx.type !== "closePosition") {
+            continue;
+          }
+          
+          const symbol = tx.instrId !== undefined ? getSymbolFromInstrId(tx.instrId) : "SOL/USDC";
+          const txDate = new Date(tx.timestamp * 1000);
+          
+          // For closed positions, we can estimate the realized PnL from the size
+          // The SDK doesn't give us historical PnL, so we mark it as realized
+          const quantity = tx.size || Math.abs(tx.solChange || 0);
+          const isLong = tx.side === "buy" || tx.side === "long";
+          
+          trades.push({
+            id: `closed-${tx.signature.slice(0, 8)}`,
+            txSignature: tx.signature,
+            symbol,
+            marketType: "perpetual",
+            side: isLong ? "long" : "short",
+            orderType: "market",
+            status: "closed",
+            entryPrice: currentPrice, // We don't have the original entry price
+            currentPrice,
+            exitPrice: currentPrice,
+            quantity,
+            leverage: 1, // Unknown for historical trades
+            entryTime: txDate,
+            exitTime: txDate,
+            pnl: 0, // We don't have accurate PnL for historical closed trades
+            pnlPercentage: 0,
+            fees: {
+              makerFee: (tx.fee / 1e9) * currentPrice || 0,
+              takerFee: 0,
+              totalFee: (tx.fee / 1e9) * currentPrice || 0,
+            },
+          });
+        }
+        
+        console.log(`[DeriverseService] Total trades (open + closed): ${trades.length}`);
+      }
+    } catch (historyErr) {
+      console.warn("[DeriverseService] Failed to fetch closed trade history:", historyErr);
+    }
     
     return trades;
   }
