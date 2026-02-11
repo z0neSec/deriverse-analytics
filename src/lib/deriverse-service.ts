@@ -446,10 +446,22 @@ export class DeriverseService {
             const currentPrice = prices["SOL/USDC"]?.midPrice || prices["SOL/USDC"]?.lastPrice || getFallbackPrice("SOL/USDC");
             
             // Convert real transactions to Trade format
+            // Only include transactions that represent actual executed trades, not just order placements
             let txIndex = 0;
             for (const tx of historyData.trades || []) {
               // Skip non-trading transactions
               if (tx.type === "deposit" || tx.type === "withdraw" || tx.type === "cancelOrder") {
+                continue;
+              }
+              
+              // Skip order placements that haven't been filled
+              // These have no size, no solChange - they're just pending orders
+              // Only include: closePosition, trade, spotOrder, or orders with actual fill data
+              const hasTradeData = tx.size || tx.solChange;
+              const isActualTrade = tx.type === "closePosition" || tx.type === "trade" || tx.type === "spotOrder";
+              
+              if (tx.type === "order" && !hasTradeData) {
+                // This is just an order placement, not a filled trade
                 continue;
               }
               
