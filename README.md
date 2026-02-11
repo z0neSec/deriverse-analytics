@@ -20,9 +20,9 @@ Deriverse Analytics is a professional-grade trading analytics dashboard that con
 
 ### Key Highlights
 
-- **Real Blockchain Data** - Fetches actual transaction history from Solana
-- **Live Price Updates** - Real-time price feeds with CoinGecko fallback
-- **Position Tracking** - Monitor open positions with unrealized PnL
+- **Real SDK Data** - Uses @deriverse/kit SDK for accurate position data
+- **Live Price Updates** - Real-time price feeds from CoinGecko
+- **Position Tracking** - Monitor open positions with real PnL from SDK
 - **Professional Analytics** - Win rate, drawdown, session analysis, and more
 - **Trading Journal** - Document and learn from your trades
 
@@ -179,27 +179,26 @@ Configure your dashboard preferences and wallet settings.
                                 │
                                 ▼
                    ┌───────────────────────┐
-                   │  Transaction Parsing  │
-                   │  - Balance Changes    │
-                   │  - Log Messages       │
-                   │  - Trade Derivation   │
+                   │   SDK Data Parsing    │
+                   │  - Position Data      │
+                   │  - Real PnL (result)  │
+                   │  - Leverage, Fees     │
                    └───────────────────────┘
 ```
 
-### SDK Fallback System
+### SDK Integration
 
-The app implements a robust fallback system when the Deriverse SDK encounters issues:
+The app uses the Deriverse SDK for accurate real-time data:
 
-1. **Primary**: Deriverse SDK (@deriverse/kit)
-2. **Fallback**: Direct Solana RPC calls
-3. **Price Fallback**: CoinGecko API for live prices
+1. **Positions**: SDK provides `perps`, `cost`, `result` (PnL), `leverage`, `fees`
+2. **Prices**: CoinGecko API for live market prices
+3. **Account Data**: SDK client data for balances and trade counts
 
 ```typescript
-// Example: Position derivation when SDK fails
-if (sdkFailed && positions.length === 0 && cachedTrades.length > 0) {
-  const openTrades = cachedTrades.filter(t => t.status === 'open');
-  // Derive positions from open trades...
-}
+// Example: Using SDK's accurate PnL
+const position = ordersData.position;
+const unrealizedPnl = position.result; // Actual PnL from SDK
+const leverage = position.leverage;    // Real leverage used
 ```
 
 ---
@@ -211,7 +210,7 @@ src/
 ├── app/                        # Next.js App Router pages
 │   ├── page.tsx               # Main dashboard
 │   ├── analytics/             # Advanced analytics page
-│   ├── api/deriverse/         # API route for SDK/RPC calls
+│   ├── api/deriverse/         # API route for SDK calls
 │   ├── fees/                  # Fee analysis page
 │   ├── history/               # Trade history page
 │   ├── journal/               # Trading journal page
@@ -325,10 +324,10 @@ This dashboard is built for [Deriverse](https://deriverse.gitbook.io/deriverse-v
 
 ### Supported Features
 - ✅ Wallet connection via Solana Wallet Adapter
-- ✅ Real transaction history fetching
-- ✅ Position tracking and PnL calculation
-- ✅ Live price feeds (SDK + CoinGecko fallback)
-- ✅ Trade parsing from on-chain data
+- ✅ Real position data from Deriverse SDK
+- ✅ Accurate PnL tracking (SDK's result field)
+- ✅ Live price feeds from CoinGecko
+- ✅ Real leverage and fee data from SDK
 
 ---
 
@@ -371,7 +370,7 @@ This project was built for the **Deriverse Hackathon** with the goal of creating
 ### Features Implemented
 
 - [x] Real-time wallet connection
-- [x] Live transaction history from Solana
+- [x] SDK position data with accurate PnL
 - [x] Total PnL tracking with cumulative charts
 - [x] Volume and fee analysis
 - [x] Win rate statistics
@@ -379,7 +378,7 @@ This project was built for the **Deriverse Hackathon** with the goal of creating
 - [x] Long/short ratio analysis
 - [x] Largest gain/loss tracking
 - [x] Open position monitoring
-- [x] Position derivation from trades
+- [x] Real leverage from SDK
 - [x] Symbol filtering
 - [x] Timeframe selection (1D/1W/1M/3M/1Y/ALL)
 - [x] Historical PnL charts
@@ -391,13 +390,12 @@ This project was built for the **Deriverse Hackathon** with the goal of creating
 - [x] Fee breakdown analysis
 - [x] CSV/PDF export
 - [x] Real-time price updates
-- [x] SDK fallback to direct RPC
+- [x] Close position integration
 
 ### Technical Achievements
 
-- **Robust SDK Fallback** - Graceful degradation when SDK fails
-- **Direct RPC Integration** - Parse transactions directly from Solana
-- **Position Derivation** - Infer positions from open trades
+- **Accurate SDK Data** - Uses SDK's real PnL, leverage, and fees
+- **CoinGecko Integration** - Live market prices
 - **Real-time Updates** - 30-second PnL refresh cycle
 - **Type-Safe** - Full TypeScript coverage
 

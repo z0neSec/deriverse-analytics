@@ -125,6 +125,7 @@ async function fetchLivePrices(): Promise<Record<string, PriceData>> {
 
 /**
  * Fetch live price for a specific symbol
+ * Prices come from CoinGecko via the API (SDK doesn't provide orderbook prices)
  */
 export async function fetchLivePrice(symbol: string): Promise<number> {
   const prices = await fetchLivePrices();
@@ -134,24 +135,8 @@ export async function fetchLivePrice(symbol: string): Promise<number> {
     console.log(`[Price] ${symbol}: $${price}`);
     return price;
   }
-  console.log(`[Price] No data for ${symbol}, using fallback`);
-  return getFallbackPrice(symbol);
-}
-
-/**
- * Get fallback price when API fails
- */
-function getFallbackPrice(symbol: string): number {
-  const fallbackPrices: Record<string, number> = {
-    "SOL/USDC": 180,
-    "BTC/USDC": 95000,
-    "ETH/USDC": 3200,
-    "RAY/USDC": 4.5,
-    "BONK/USDC": 0.000025,
-    "JUP/USDC": 1.2,
-    "PYTH/USDC": 0.45,
-  };
-  return fallbackPrices[symbol] || 100;
+  console.warn(`[Price] No price data for ${symbol}`);
+  return 0;
 }
 
 /**
@@ -252,18 +237,17 @@ export class DeriverseService {
         // Check if SDK returned an error
         if ('sdkError' in ordersData) {
           sdkOrdersFailed = true;
-          console.log("[DeriverseService] SDK error on spotOrders, will use synthetic trades");
+          console.log("[DeriverseService] SDK error on spotOrders");
           continue;
         }
         
         const symbol = getSymbolFromInstrId(spotPos.instrId);
         const priceData = prices[symbol];
-        const currentPrice = priceData?.midPrice || priceData?.lastPrice || getFallbackPrice(symbol);
+        const currentPrice = priceData?.midPrice || priceData?.lastPrice || 0;
 
         // Convert bids (buy orders) to trades
-        // Note: Orders don't have direct price, using current price as reference
+        // Note: SDK orders don't include entry price, using current price as reference
         for (const bid of ordersData.bids) {
-          const volume = currentPrice * bid.quantity;
           trades.push({
             id: `spot-bid-${tradeId++}`,
             txSignature: `spot-${spotPos.instrId}-bid-${bid.orderId}`,
@@ -272,21 +256,20 @@ export class DeriverseService {
             side: "long",
             orderType: "limit",
             status: bid.filled >= bid.quantity ? "closed" : "open",
-            entryPrice: currentPrice, // Using market price as reference
+            entryPrice: currentPrice,
             currentPrice,
             quantity: bid.quantity,
             entryTime: new Date(bid.timestamp * 1000),
             fees: {
-              makerFee: volume * 0.0002,
-              takerFee: volume * 0.0005,
-              totalFee: volume * 0.0007,
+              makerFee: 0,
+              takerFee: 0,
+              totalFee: 0,
             },
           });
         }
 
         // Convert asks (sell orders) to trades
         for (const ask of ordersData.asks) {
-          const volume = currentPrice * ask.quantity;
           trades.push({
             id: `spot-ask-${tradeId++}`,
             txSignature: `spot-${spotPos.instrId}-ask-${ask.orderId}`,
@@ -295,14 +278,14 @@ export class DeriverseService {
             side: "short",
             orderType: "limit",
             status: ask.filled >= ask.quantity ? "closed" : "open",
-            entryPrice: currentPrice, // Using market price as reference
+            entryPrice: currentPrice,
             currentPrice,
             quantity: ask.quantity,
             entryTime: new Date(ask.timestamp * 1000),
             fees: {
-              makerFee: volume * 0.0002,
-              takerFee: volume * 0.0005,
-              totalFee: volume * 0.0007,
+              makerFee: 0,
+              takerFee: 0,
+              totalFee: 0,
             },
           });
         }
@@ -329,13 +312,13 @@ export class DeriverseService {
         // Check if SDK returned an error
         if ('sdkError' in ordersData) {
           sdkOrdersFailed = true;
-          console.log("[DeriverseService] SDK error on perpOrders, will use synthetic trades");
+          console.log("[DeriverseService] SDK error on perpOrders");
           continue;
         }
         
         const symbol = getSymbolFromInstrId(perpPos.instrId);
         const priceData = prices[symbol];
-        const currentPrice = priceData?.midPrice || priceData?.lastPrice || getFallbackPrice(symbol);
+        const currentPrice = priceData?.midPrice || priceData?.lastPrice || 0;
         const position = ordersData.position;
 
         // If there's an active perp position (perps != 0), create a trade for it
@@ -375,7 +358,6 @@ export class DeriverseService {
         // Add open orders as pending trades
         // Note: Orders don't have direct price, using current price as reference
         for (const bid of ordersData.bids) {
-          const volume = currentPrice * bid.quantity;
           trades.push({
             id: `perp-bid-${tradeId++}`,
             txSignature: `perp-${perpPos.instrId}-bid-${bid.orderId}`,
@@ -384,21 +366,20 @@ export class DeriverseService {
             side: "long",
             orderType: "limit",
             status: "open",
-            entryPrice: currentPrice, // Using market price as reference
+            entryPrice: currentPrice,
             currentPrice,
             quantity: bid.quantity,
             leverage: position?.leverage || 1,
             entryTime: new Date(bid.timestamp * 1000),
             fees: {
-              makerFee: volume * 0.0002,
+              makerFee: 0,
               takerFee: 0,
-              totalFee: volume * 0.0002,
+              totalFee: 0,
             },
           });
         }
 
         for (const ask of ordersData.asks) {
-          const volume = currentPrice * ask.quantity;
           trades.push({
             id: `perp-ask-${tradeId++}`,
             txSignature: `perp-${perpPos.instrId}-ask-${ask.orderId}`,
@@ -407,15 +388,15 @@ export class DeriverseService {
             side: "short",
             orderType: "limit",
             status: "open",
-            entryPrice: currentPrice, // Using market price as reference
+            entryPrice: currentPrice,
             currentPrice,
             quantity: ask.quantity,
             leverage: position?.leverage || 1,
             entryTime: new Date(ask.timestamp * 1000),
             fees: {
-              makerFee: volume * 0.0002,
+              makerFee: 0,
               takerFee: 0,
-              totalFee: volume * 0.0002,
+              totalFee: 0,
             },
           });
         }
@@ -427,26 +408,15 @@ export class DeriverseService {
 
     // SDK now works properly - we get accurate position data from perpOrders/spotOrders
     // The SDK provides: position size, entry cost, PnL (result), leverage, fees, etc.
-    // We should NOT use Solana transaction history as it doesn't give us accurate trade data
-    // (no entry price, no leverage, no real PnL)
     
-    // Log what the SDK provided
     console.log(`[DeriverseService] SDK provided ${trades.length} trades/positions`);
-
-    console.log(`[DeriverseService] Fetched ${trades.length} trades`);
-    
-    // Cache trades for getPositions to use
-    this.cachedTrades = trades;
     
     return trades;
   }
 
-  // Cached trades for deriving positions
-  private cachedTrades: Trade[] = [];
-
   /**
-   * Fetch current open positions
-   * Since SDK fails, derive positions from open trades
+   * Fetch current open positions from SDK
+   * Uses the SDK's accurate position data including real PnL
    */
   async getPositions(): Promise<Position[]> {
     if (!this.walletAddress || !this.clientData?.hasAccount) {
@@ -456,8 +426,7 @@ export class DeriverseService {
     const positions: Position[] = [];
     const prices = await fetchLivePrices();
 
-    // First try SDK method
-    let sdkFailed = false;
+    // Fetch positions from SDK
     for (const perpPos of this.clientData.perpPositions) {
       try {
         const response = await fetch(
@@ -465,7 +434,7 @@ export class DeriverseService {
         );
         
         if (!response.ok) {
-          sdkFailed = true;
+          console.error(`[DeriverseService] Failed to fetch perp position: ${response.status}`);
           continue;
         }
         
@@ -473,7 +442,7 @@ export class DeriverseService {
         
         // Check if SDK returned error
         if ('sdkError' in ordersData) {
-          sdkFailed = true;
+          console.error("[DeriverseService] SDK error fetching position:", ordersData);
           continue;
         }
         
@@ -482,13 +451,13 @@ export class DeriverseService {
         if (position && position.perps !== 0) {
           const symbol = getSymbolFromInstrId(perpPos.instrId);
           const priceData = prices[symbol];
-          const currentPrice = priceData?.midPrice || priceData?.lastPrice || getFallbackPrice(symbol);
+          const currentPrice = priceData?.midPrice || priceData?.lastPrice || 0;
           const isLong = position.perps > 0;
           const size = Math.abs(position.perps);
           const entryPrice = position.cost !== 0 ? Math.abs(position.cost / position.perps) : currentPrice;
-          const unrealizedPnl = isLong 
-            ? (currentPrice - entryPrice) * size
-            : (entryPrice - currentPrice) * size;
+          
+          // Use SDK's actual PnL (result field) - this is accurate
+          const unrealizedPnl = position.result || 0;
 
           positions.push({
             id: `perp-${perpPos.instrId}`,
@@ -500,49 +469,14 @@ export class DeriverseService {
             quantity: size,
             leverage: position.leverage || 1,
             unrealizedPnl,
-            unrealizedPnlPercentage: entryPrice > 0 ? (unrealizedPnl / (entryPrice * size)) * 100 : 0,
+            unrealizedPnlPercentage: entryPrice > 0 && size > 0 ? (unrealizedPnl / (entryPrice * size)) * 100 : 0,
             margin: position.funds,
             openTime: new Date(),
           });
         }
       } catch (error) {
         console.error(`[DeriverseService] Failed to fetch perp position for instr ${perpPos.instrId}:`, error);
-        sdkFailed = true;
       }
-    }
-
-    // If SDK failed and we have no positions, derive from cached open trades
-    if (sdkFailed && positions.length === 0 && this.cachedTrades.length > 0) {
-      console.log("[DeriverseService] SDK failed, deriving positions from open trades");
-      
-      const openTrades = this.cachedTrades.filter(t => t.status === 'open');
-      
-      for (const trade of openTrades) {
-        const priceData = prices[trade.symbol];
-        // Ensure currentPrice always has a value - use entryPrice as final fallback
-        const currentPrice = priceData?.midPrice || priceData?.lastPrice || trade.currentPrice || trade.entryPrice;
-        const isLong = trade.side === 'long';
-        const unrealizedPnl = isLong 
-          ? (currentPrice - trade.entryPrice) * trade.quantity
-          : (trade.entryPrice - currentPrice) * trade.quantity;
-
-        positions.push({
-          id: `pos-${trade.id}`,
-          symbol: trade.symbol,
-          marketType: trade.marketType,
-          side: trade.side,
-          entryPrice: trade.entryPrice,
-          currentPrice: currentPrice,
-          quantity: trade.quantity,
-          leverage: trade.leverage || 1,
-          unrealizedPnl,
-          unrealizedPnlPercentage: trade.entryPrice > 0 ? (unrealizedPnl / (trade.entryPrice * trade.quantity)) * 100 : 0,
-          margin: trade.entryPrice * trade.quantity / (trade.leverage || 1),
-          openTime: trade.entryTime,
-        });
-      }
-      
-      console.log(`[DeriverseService] Derived ${positions.length} positions from open trades`);
     }
 
     return positions;
