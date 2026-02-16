@@ -422,25 +422,36 @@ export class DeriverseService {
         const historyData = await historyResponse.json();
         console.log(`[DeriverseService] Got ${historyData.trades?.length || 0} transactions from history`);
         
+        // Log types for debugging
+        const typeCounts: Record<string, number> = {};
+        for (const tx of historyData.trades || []) {
+          typeCounts[tx.type] = (typeCounts[tx.type] || 0) + 1;
+        }
+        console.log(`[DeriverseService] Transaction types:`, typeCounts);
+        
         const currentPrice = prices["SOL/USDC"]?.midPrice || prices["SOL/USDC"]?.lastPrice || 0;
         
-        // Only add CLOSED trades (closePosition type) from transaction history
+        // Include closed trades and filled orders from transaction history
+        // Skip unfilled orders (perpOrder, spotOrder, cancelOrder, deposit, withdraw)
         for (const tx of historyData.trades || []) {
-          // Only include closePosition transactions - these are actual closed trades
-          if (tx.type !== "closePosition") {
+          // Include closePosition and trade (filled) types
+          // Skip order placements, cancellations, deposits, withdrawals
+          if (!["closePosition", "trade"].includes(tx.type)) {
+            continue;
+          }
+          
+          // Skip if no meaningful trade data (likely an unfilled order)
+          const quantity = tx.size || Math.abs(tx.solChange || 0);
+          if (quantity === 0) {
             continue;
           }
           
           const symbol = tx.instrId !== undefined ? getSymbolFromInstrId(tx.instrId) : "SOL/USDC";
           const txDate = new Date(tx.timestamp * 1000);
-          
-          // For closed positions, we can estimate the realized PnL from the size
-          // The SDK doesn't give us historical PnL, so we mark it as realized
-          const quantity = tx.size || Math.abs(tx.solChange || 0);
           const isLong = tx.side === "buy" || tx.side === "long";
           
           trades.push({
-            id: `closed-${tx.signature.slice(0, 8)}`,
+            id: `history-${tx.signature.slice(0, 8)}`,
             txSignature: tx.signature,
             symbol,
             marketType: "perpetual",

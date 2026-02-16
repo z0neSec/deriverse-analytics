@@ -950,7 +950,12 @@ function parseDeriverseTransaction(
     }
     
     // Detect operation type
-    if (logLower.includes('place') || logLower.includes('order')) {
+    // Check for close position FIRST (most specific)
+    if (logLower.includes('close') && logLower.includes('position')) {
+      type = "closePosition";
+    } else if (logLower.includes('closeposition') || logLower.includes('close_position')) {
+      type = "closePosition";
+    } else if (logLower.includes('place') || logLower.includes('order')) {
       type = isPerp ? "perpOrder" : "spotOrder";
     } else if (logLower.includes('cancel')) {
       type = "cancelOrder";
@@ -960,8 +965,6 @@ function parseDeriverseTransaction(
       type = "deposit";
     } else if (logLower.includes('withdraw')) {
       type = "withdraw";
-    } else if (logLower.includes('close') || logLower.includes('position')) {
-      type = "closePosition";
     }
     
     // Try to extract instrument ID from logs
