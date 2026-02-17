@@ -159,13 +159,28 @@ export const useTradingStore = create<TradingState>()(
     }),
     {
       name: "deriverse-trading-store",
-      // Only persist journal entries and filters - NOT trades/positions/timeframe
+      // Only persist journal entries and filters - NOT trades/positions/connection state
       // Trades and positions should be fetched fresh on each wallet connection
-      // Timeframe defaults to ALL to show all trades
       partialize: (state) => ({
         journalEntries: state.journalEntries,
         filters: state.filters,
       }),
+      // Custom merge: only restore persisted fields, never stale connection/trade data
+      merge: (persistedState, currentState) => {
+        const persisted = persistedState as Partial<TradingState> | undefined;
+        return {
+          ...currentState,
+          journalEntries: persisted?.journalEntries ?? currentState.journalEntries,
+          filters: persisted?.filters ?? currentState.filters,
+          // Explicitly ensure these are NEVER restored from localStorage
+          isConnected: false,
+          walletAddress: null,
+          trades: [],
+          positions: [],
+          metrics: null,
+          isLoading: false,
+        };
+      },
       // Skip hydration to avoid SSR mismatch issues
       skipHydration: true,
     }

@@ -59,6 +59,7 @@ export default function DashboardPage() {
   const filters = useTradingStore((state) => state.filters);
   const selectedTimeframe = useTradingStore((state) => state.selectedTimeframe);
   const isConnected = useTradingStore((state) => state.isConnected);
+  const isLoading = useTradingStore((state) => state.isLoading);
 
   // Apply filters with timeframe and recalculate metrics
   const filteredTrades = useMemo(() => filterTradesWithTimeframe(trades, filters, selectedTimeframe), [trades, filters, selectedTimeframe]);
@@ -136,7 +137,7 @@ export default function DashboardPage() {
         <div className="flex items-center gap-2">
           <div className="hidden sm:flex items-center gap-2 text-xs mr-4">
             <span className="text-slate-600">Last updated:</span>
-            <span className="text-slate-400 tabular-nums" style={{ fontFamily: 'var(--font-jetbrains)' }}>
+            <span className="text-slate-400 tabular-nums" style={{ fontFamily: 'var(--font-jetbrains)' }} suppressHydrationWarning>
               {format(new Date(), "MMM dd, yyyy HH:mm")}
             </span>
           </div>
@@ -166,16 +167,31 @@ export default function DashboardPage() {
         <FilterBar />
       </motion.div>
 
-      {/* Show empty state if not connected or no trades */}
-      {!isConnected || trades.length === 0 ? (
-        <motion.div variants={itemVariants} key={`empty-${isConnected}`}>
+      {/* Show empty state if not connected or no trades (and not loading) */}
+      {!isConnected ? (
+        <motion.div variants={itemVariants} key="empty-disconnected">
           <EmptyState 
-            title={!isConnected ? "Connect Your Wallet" : "No Trading Data"}
-            description={!isConnected 
-              ? "Connect your Solana wallet to view your Deriverse trading analytics"
-              : "No trading history found on Deriverse for this wallet"
-            }
-            showConnectWallet={!isConnected}
+            title="Connect Your Wallet"
+            description="Connect your Solana wallet to view your Deriverse trading analytics"
+            showConnectWallet={true}
+          />
+        </motion.div>
+      ) : isLoading ? (
+        <motion.div variants={itemVariants} key="loading">
+          <div className="flex flex-col items-center justify-center py-20 text-center">
+            <div className="flex gap-1.5 mb-4">
+              <div className="w-1.5 h-4 rounded-full bg-gradient-to-b from-emerald-400 to-teal-500 animate-bounce" style={{ animationDelay: '0ms' }} />
+              <div className="w-1.5 h-4 rounded-full bg-gradient-to-b from-emerald-400 to-teal-500 animate-bounce" style={{ animationDelay: '100ms' }} />
+              <div className="w-1.5 h-4 rounded-full bg-gradient-to-b from-emerald-400 to-teal-500 animate-bounce" style={{ animationDelay: '200ms' }} />
+            </div>
+            <p className="text-sm text-slate-400">Loading trading data from Deriverse...</p>
+          </div>
+        </motion.div>
+      ) : trades.length === 0 ? (
+        <motion.div variants={itemVariants} key="empty-no-data">
+          <EmptyState 
+            title="No Trading Data"
+            description="No Deriverse trades found for this wallet"
           />
         </motion.div>
       ) : (

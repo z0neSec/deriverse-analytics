@@ -12,7 +12,7 @@ import { openDeriverseToClose } from "@/lib/use-close-position";
 import type { Trade } from "@/types";
 
 export default function HistoryPage() {
-  const { trades, filters, selectedTimeframe } = useTradingStore();
+  const { trades, filters, selectedTimeframe, isLoading } = useTradingStore();
 
   const filteredTrades = useMemo(() => filterTradesWithTimeframe(trades, filters, selectedTimeframe), [trades, filters, selectedTimeframe]);
   const metrics = useMemo(() => calculatePortfolioMetrics(filteredTrades), [filteredTrades]);
@@ -79,7 +79,16 @@ export default function HistoryPage() {
       <FilterBar />
 
       {/* Show empty state if no trades */}
-      {trades.length === 0 ? (
+      {isLoading ? (
+        <div className="flex flex-col items-center justify-center py-20 text-center">
+          <div className="flex gap-1.5 mb-4">
+            <div className="w-1.5 h-4 rounded-full bg-gradient-to-b from-emerald-400 to-teal-500 animate-bounce" style={{ animationDelay: '0ms' }} />
+            <div className="w-1.5 h-4 rounded-full bg-gradient-to-b from-emerald-400 to-teal-500 animate-bounce" style={{ animationDelay: '100ms' }} />
+            <div className="w-1.5 h-4 rounded-full bg-gradient-to-b from-emerald-400 to-teal-500 animate-bounce" style={{ animationDelay: '200ms' }} />
+          </div>
+          <p className="text-sm text-slate-400">Loading trade history...</p>
+        </div>
+      ) : trades.length === 0 ? (
         <EmptyState 
           title="No Trade History"
           description="Connect your wallet to view your Deriverse trading history"

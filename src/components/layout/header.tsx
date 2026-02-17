@@ -1,11 +1,10 @@
 "use client";
 
-import React, { useEffect, useSyncExternalStore, useCallback } from "react";
+import React, { useSyncExternalStore, useCallback } from "react";
 import { motion } from "framer-motion";
 import { Bell, ExternalLink, Circle } from "lucide-react";
-import { useWallet } from "@solana/wallet-adapter-react";
 import dynamic from "next/dynamic";
-import { useTradingStore, useUIStore } from "@/store";
+import { useUIStore } from "@/store";
 
 // Dynamically import WalletMultiButton to avoid hydration mismatch
 const WalletMultiButton = dynamic(
@@ -29,19 +28,8 @@ function useIsMobile() {
 }
 
 export function Header() {
-  const { connected, publicKey } = useWallet();
-  const { setConnected } = useTradingStore();
   const { sidebarCollapsed } = useUIStore();
   const isMobile = useIsMobile();
-
-  // Sync wallet state with store
-  useEffect(() => {
-    if (connected && publicKey) {
-      setConnected(true, publicKey.toBase58());
-    } else {
-      setConnected(false);
-    }
-  }, [connected, publicKey, setConnected]);
 
   // On mobile, start from left edge. On desktop, margin based on sidebar state
   const leftPosition = isMobile ? 0 : sidebarCollapsed ? "4rem" : "16rem";

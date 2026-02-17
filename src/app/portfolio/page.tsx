@@ -14,7 +14,7 @@ import { cn } from "@/lib/utils";
 const ALLOCATION_COLORS = ["#10B981", "#3B82F6", "#F59E0B", "#8B5CF6", "#EC4899"];
 
 export default function PortfolioPage() {
-  const { trades, positions, filters, selectedTimeframe, isConnected } = useTradingStore();
+  const { trades, positions, filters, selectedTimeframe, isConnected, isLoading } = useTradingStore();
 
   const filteredTrades = useMemo(() => filterTradesWithTimeframe(trades, filters, selectedTimeframe), [trades, filters, selectedTimeframe]);
   const metrics = useMemo(() => calculatePortfolioMetrics(filteredTrades), [filteredTrades]);
@@ -77,10 +77,19 @@ export default function PortfolioPage() {
           title="Wallet Not Connected"
           description="Connect your wallet to view your portfolio overview"
         />
+      ) : isLoading ? (
+        <div className="flex flex-col items-center justify-center py-20 text-center">
+          <div className="flex gap-1.5 mb-4">
+            <div className="w-1.5 h-4 rounded-full bg-gradient-to-b from-emerald-400 to-teal-500 animate-bounce" style={{ animationDelay: '0ms' }} />
+            <div className="w-1.5 h-4 rounded-full bg-gradient-to-b from-emerald-400 to-teal-500 animate-bounce" style={{ animationDelay: '100ms' }} />
+            <div className="w-1.5 h-4 rounded-full bg-gradient-to-b from-emerald-400 to-teal-500 animate-bounce" style={{ animationDelay: '200ms' }} />
+          </div>
+          <p className="text-sm text-slate-400">Loading trading data from Deriverse...</p>
+        </div>
       ) : trades.length === 0 ? (
         <EmptyState 
           title="No Trading Data"
-          description="No Deriverse trades found for this wallet. Try trading on devnet.deriverse.io first!"
+          description="No Deriverse trades found for this wallet"
         />
       ) : filteredTrades.length === 0 ? (
         <EmptyState 

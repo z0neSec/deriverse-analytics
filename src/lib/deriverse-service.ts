@@ -218,7 +218,6 @@ export class DeriverseService {
     const trades: Trade[] = [];
     const prices = await fetchLivePrices();
     let tradeId = 1;
-    let sdkOrdersFailed = false;
 
     // Process spot positions
     for (const spotPos of this.clientData.spotPositions) {
@@ -228,7 +227,6 @@ export class DeriverseService {
         );
         
         if (!response.ok) {
-          sdkOrdersFailed = true;
           continue;
         }
         
@@ -236,7 +234,6 @@ export class DeriverseService {
         
         // Check if SDK returned an error
         if ('sdkError' in ordersData) {
-          sdkOrdersFailed = true;
           console.log("[DeriverseService] SDK error on spotOrders");
           continue;
         }
@@ -291,7 +288,6 @@ export class DeriverseService {
         }
       } catch (error) {
         console.error(`[DeriverseService] Failed to fetch spot orders for instr ${spotPos.instrId}:`, error);
-        sdkOrdersFailed = true;
       }
     }
 
@@ -303,7 +299,6 @@ export class DeriverseService {
         );
         
         if (!response.ok) {
-          sdkOrdersFailed = true;
           continue;
         }
         
@@ -311,7 +306,6 @@ export class DeriverseService {
         
         // Check if SDK returned an error
         if ('sdkError' in ordersData) {
-          sdkOrdersFailed = true;
           console.log("[DeriverseService] SDK error on perpOrders");
           continue;
         }
@@ -402,21 +396,38 @@ export class DeriverseService {
         }
       } catch (error) {
         console.error(`[DeriverseService] Failed to fetch perp orders for instr ${perpPos.instrId}:`, error);
-        sdkOrdersFailed = true;
       }
     }
 
     // SDK provides accurate data for OPEN positions
-    // But we also need to fetch CLOSED trades from transaction history
-    // The SDK doesn't provide historical closed trade data
+    // Return immediately without waiting for slow tradeHistory
     
     console.log(`[DeriverseService] SDK provided ${trades.length} open positions/orders`);
     
-    // Fetch closed trades from transaction history
+    return trades;
+  }
+
+  /**
+   * Fetch closed trade history from Solana transaction history (SLOW)
+   * This is separate from getTradingHistory so it doesn't block the initial render
+   */
+  async fetchClosedTradeHistory(): Promise<Trade[]> {
+    if (!this.walletAddress || !this.clientData?.hasAccount) {
+      return [];
+    }
+
+    const closedTrades: Trade[] = [];
+
     try {
+      const prices = await fetchLivePrices();
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 30000); // 30s timeout
+
       const historyResponse = await fetch(
-        `${API_BASE}?action=tradeHistory&wallet=${this.walletAddress}`
+        `${API_BASE}?action=tradeHistory&wallet=${this.walletAddress}`,
+        { signal: controller.signal }
       );
+      clearTimeout(timeoutId);
       
       if (historyResponse.ok) {
         const historyData = await historyResponse.json();
@@ -431,26 +442,27 @@ export class DeriverseService {
         
         const currentPrice = prices["SOL/USDC"]?.midPrice || prices["SOL/USDC"]?.lastPrice || 0;
         
-        // Include closed trades and filled orders from transaction history
-        // Skip unfilled orders (perpOrder, spotOrder, cancelOrder, deposit, withdraw)
+        // Include all Deriverse transactions that represent actual trades
+        // Skip only cancellations, deposits, and withdrawals
         for (const tx of historyData.trades || []) {
-          // Include closePosition and trade (filled) types
-          // Skip order placements, cancellations, deposits, withdrawals
-          if (!["closePosition", "trade"].includes(tx.type)) {
+          // Skip non-trade transaction types
+          if (["cancelOrder", "deposit", "withdraw"].includes(tx.type)) {
             continue;
           }
           
-          // Skip if no meaningful trade data (likely an unfilled order)
-          const quantity = tx.size || Math.abs(tx.solChange || 0);
-          if (quantity === 0) {
+          // Skip if no meaningful trade data (no token changes = unfilled order)
+          const quantity = tx.size || 0;
+          const solChanged = Math.abs(tx.solChange || 0);
+          if (quantity === 0 && solChanged === 0) {
             continue;
           }
           
           const symbol = tx.instrId !== undefined ? getSymbolFromInstrId(tx.instrId) : "SOL/USDC";
           const txDate = new Date(tx.timestamp * 1000);
           const isLong = tx.side === "buy" || tx.side === "long";
+          const tradeQuantity = quantity || solChanged;
           
-          trades.push({
+          closedTrades.push({
             id: `history-${tx.signature.slice(0, 8)}`,
             txSignature: tx.signature,
             symbol,
@@ -458,14 +470,14 @@ export class DeriverseService {
             side: isLong ? "long" : "short",
             orderType: "market",
             status: "closed",
-            entryPrice: currentPrice, // We don't have the original entry price
+            entryPrice: currentPrice,
             currentPrice,
             exitPrice: currentPrice,
-            quantity,
-            leverage: 1, // Unknown for historical trades
+            quantity: tradeQuantity,
+            leverage: 1,
             entryTime: txDate,
             exitTime: txDate,
-            pnl: 0, // We don't have accurate PnL for historical closed trades
+            pnl: 0,
             pnlPercentage: 0,
             fees: {
               makerFee: (tx.fee / 1e9) * currentPrice || 0,
@@ -475,13 +487,17 @@ export class DeriverseService {
           });
         }
         
-        console.log(`[DeriverseService] Total trades (open + closed): ${trades.length}`);
+        console.log(`[DeriverseService] Found ${closedTrades.length} closed trades from history`);
       }
     } catch (historyErr) {
-      console.warn("[DeriverseService] Failed to fetch closed trade history:", historyErr);
+      if (historyErr instanceof DOMException && historyErr.name === 'AbortError') {
+        console.warn("[DeriverseService] Trade history fetch timed out after 30s");
+      } else {
+        console.warn("[DeriverseService] Failed to fetch closed trade history:", historyErr);
+      }
     }
     
-    return trades;
+    return closedTrades;
   }
 
   /**
