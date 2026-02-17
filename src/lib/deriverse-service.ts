@@ -353,29 +353,34 @@ export class DeriverseService {
         else if (position && position.perps === 0 && (position.result !== 0 || position.fees !== 0)) {
           const realizedPnl = position.result || 0;
           const totalFees = (position.fees || 0) - (position.rebates || 0) + (position.fundingFunds || 0);
+          const leverage = position.leverage || 1;
           
-          // Determine side from the result and cost history
-          // If result is negative with positive cost, was likely short; otherwise long
-          // We use the SDK's perpTrades count and last leverage as clues
-          const perpTradeCount = this.clientData?.perpTrades || 0;
+          // Estimate position size from SDK margin data so volume isn't $0 on initial render
+          // Initial margin ≈ remaining funds + |realized PnL| + fees paid
+          const initialMargin = Math.abs(position.funds) + Math.abs(realizedPnl) + Math.abs(position.fees);
+          const notionalValue = initialMargin * leverage;
+          const estimatedSize = currentPrice > 0 ? notionalValue / currentPrice : 0;
+          
+          // Estimate PnL percentage from notional value
+          const pnlPct = notionalValue > 0 ? (realizedPnl / notionalValue) * 100 : 0;
           
           trades.push({
             id: `perp-realized-${tradeId++}`,
             txSignature: `perp-${perpPos.instrId}-realized`,
             symbol,
             marketType: "perpetual",
-            side: "short", // Will be refined by transaction history
+            side: "short", // Will be refined by historical price data in Phase 2
             orderType: "market",
             status: "closed",
             entryPrice: currentPrice, 
             currentPrice,
             exitPrice: currentPrice,
-            quantity: 0, // Position is fully closed
-            leverage: position.leverage || 1,
+            quantity: estimatedSize, // Estimated from margin; refined in Phase 2
+            leverage,
             entryTime: new Date(),
             exitTime: new Date(),
             pnl: realizedPnl,
-            pnlPercentage: 0,
+            pnlPercentage: pnlPct,
             fees: {
               makerFee: position.fees - position.rebates,
               takerFee: 0,
@@ -384,7 +389,7 @@ export class DeriverseService {
             },
           });
           
-          console.log(`[DeriverseService] Closed perp position for ${symbol}: PnL=${realizedPnl}, Fees=${totalFees}, Leverage=${position.leverage}, PerpTrades=${perpTradeCount}`);
+          console.log(`[DeriverseService] Closed perp position for ${symbol}: PnL=${realizedPnl}, Fees=${totalFees}, Leverage=${leverage}, EstSize=${estimatedSize.toFixed(4)}, Notional=$${notionalValue.toFixed(2)}`);
         }
 
         // Add open orders as pending trades
