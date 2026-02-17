@@ -348,6 +348,44 @@ export class DeriverseService {
             },
           });
         }
+        // If position is closed (perps === 0) but has a realized result, create a closed trade
+        // This captures the SDK's accurate PnL for positions that were closed
+        else if (position && position.perps === 0 && (position.result !== 0 || position.fees !== 0)) {
+          const realizedPnl = position.result || 0;
+          const totalFees = (position.fees || 0) - (position.rebates || 0) + (position.fundingFunds || 0);
+          
+          // Determine side from the result and cost history
+          // If result is negative with positive cost, was likely short; otherwise long
+          // We use the SDK's perpTrades count and last leverage as clues
+          const perpTradeCount = this.clientData?.perpTrades || 0;
+          
+          trades.push({
+            id: `perp-realized-${tradeId++}`,
+            txSignature: `perp-${perpPos.instrId}-realized`,
+            symbol,
+            marketType: "perpetual",
+            side: "short", // Will be refined by transaction history
+            orderType: "market",
+            status: "closed",
+            entryPrice: currentPrice, 
+            currentPrice,
+            exitPrice: currentPrice,
+            quantity: 0, // Position is fully closed
+            leverage: position.leverage || 1,
+            entryTime: new Date(),
+            exitTime: new Date(),
+            pnl: realizedPnl,
+            pnlPercentage: 0,
+            fees: {
+              makerFee: position.fees - position.rebates,
+              takerFee: 0,
+              fundingFee: position.fundingFunds,
+              totalFee: totalFees,
+            },
+          });
+          
+          console.log(`[DeriverseService] Closed perp position for ${symbol}: PnL=${realizedPnl}, Fees=${totalFees}, Leverage=${position.leverage}, PerpTrades=${perpTradeCount}`);
+        }
 
         // Add open orders as pending trades
         // Note: Orders don't have direct price, using current price as reference

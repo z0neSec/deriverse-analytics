@@ -124,10 +124,17 @@ function WalletStateHandler({ children }: { children: React.ReactNode }) {
           const currentTrades = tradesRef.current;
           // Avoid duplicates by checking signatures
           const existingSignatures = new Set(currentTrades.map(t => t.txSignature));
-          const newClosedTrades = closedTrades.filter(t => !existingSignatures.has(t.txSignature));
+          // Also skip history trades for symbols already covered by SDK data
+          // (SDK provides accurate PnL; history trades have $0 PnL and wrong metadata)
+          const sdkCoveredSymbols = new Set(currentTrades.map(t => t.symbol));
+          const newClosedTrades = closedTrades.filter(t => 
+            !existingSignatures.has(t.txSignature) && !sdkCoveredSymbols.has(t.symbol)
+          );
           if (newClosedTrades.length > 0) {
             setTrades([...currentTrades, ...newClosedTrades]);
             console.log('[WalletProvider] Merged total trades:', currentTrades.length + newClosedTrades.length);
+          } else {
+            console.log('[WalletProvider] No new history trades to merge (SDK already covers all symbols)');
           }
         }
       }).catch(err => {
