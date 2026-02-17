@@ -868,6 +868,68 @@ export async function GET(request: NextRequest) {
         }
       }
 
+      case "historicalPrice": {
+        // Fetch historical SOL price from CoinGecko at specific timestamps
+        // Used to estimate entry/exit prices for closed positions
+        const fromTs = parseInt(searchParams.get("from") || "0");
+        const toTs = parseInt(searchParams.get("to") || "0");
+        
+        if (!fromTs || !toTs) {
+          return NextResponse.json({ error: "Missing from/to timestamps" }, { status: 400 });
+        }
+
+        try {
+          // Add 1 hour buffer on each side for interpolation
+          const response = await fetch(
+            `https://api.coingecko.com/api/v3/coins/solana/market_chart/range?vs_currency=usd&from=${fromTs - 3600}&to=${toTs + 3600}`,
+            { signal: AbortSignal.timeout(10000) }
+          );
+          
+          if (!response.ok) {
+            throw new Error(`CoinGecko API error: ${response.status}`);
+          }
+          
+          const data = await response.json();
+          const prices: Array<{ timestamp: number; price: number }> = (data.prices || []).map(
+            (p: [number, number]) => ({ timestamp: Math.floor(p[0] / 1000), price: p[1] })
+          );
+          
+          // Find closest prices to requested timestamps
+          const findClosestPrice = (targetTs: number): number => {
+            if (prices.length === 0) return 0;
+            let closest = prices[0];
+            let minDiff = Math.abs(prices[0].timestamp - targetTs);
+            for (const p of prices) {
+              const diff = Math.abs(p.timestamp - targetTs);
+              if (diff < minDiff) {
+                minDiff = diff;
+                closest = p;
+              }
+            }
+            return closest.price;
+          };
+          
+          const entryPrice = findClosestPrice(fromTs);
+          const exitPrice = findClosestPrice(toTs);
+          
+          console.log(`[DeriverseAPI] Historical prices: entry=$${entryPrice.toFixed(2)} at ${fromTs}, exit=$${exitPrice.toFixed(2)} at ${toTs}`);
+          
+          return NextResponse.json({
+            entryPrice,
+            exitPrice,
+            pricePoints: prices.length,
+            source: "coingecko-historical",
+          });
+        } catch (error) {
+          console.warn("[DeriverseAPI] Historical price fetch failed:", error);
+          return NextResponse.json({
+            entryPrice: 0,
+            exitPrice: 0,
+            error: error instanceof Error ? error.message : "Failed to fetch historical prices",
+          });
+        }
+      }
+
       default:
         return NextResponse.json({ error: "Unknown action" }, { status: 400 });
     }

@@ -448,13 +448,24 @@ export class DeriverseService {
   /**
    * Fetch closed trade history from Solana transaction history (SLOW)
    * This is separate from getTradingHistory so it doesn't block the initial render
+   * Returns both individual trades and a timeline summary for enriching SDK trades
    */
-  async fetchClosedTradeHistory(): Promise<Trade[]> {
+  async fetchClosedTradeHistory(): Promise<{
+    trades: Trade[];
+    timeline: {
+      firstTradeTime: number;
+      lastTradeTime: number;
+      tradeCount: number;
+    } | null;
+  }> {
     if (!this.walletAddress || !this.clientData?.hasAccount) {
-      return [];
+      return { trades: [], timeline: null };
     }
 
     const closedTrades: Trade[] = [];
+    let firstTradeTime = Infinity;
+    let lastTradeTime = 0;
+    let tradeCount = 0;
 
     try {
       const prices = await fetchLivePrices();
@@ -479,6 +490,16 @@ export class DeriverseService {
         console.log(`[DeriverseService] Transaction types:`, typeCounts);
         
         const currentPrice = prices["SOL/USDC"]?.midPrice || prices["SOL/USDC"]?.lastPrice || 0;
+        
+        // Track timeline across ALL Deriverse transactions (not just filtered ones)
+        for (const tx of historyData.trades || []) {
+          const ts = tx.timestamp || 0;
+          if (ts > 0) {
+            if (ts < firstTradeTime) firstTradeTime = ts;
+            if (ts > lastTradeTime) lastTradeTime = ts;
+            tradeCount++;
+          }
+        }
         
         // Include all Deriverse transactions that represent actual trades
         // Skip only cancellations, deposits, and withdrawals
@@ -526,6 +547,7 @@ export class DeriverseService {
         }
         
         console.log(`[DeriverseService] Found ${closedTrades.length} closed trades from history`);
+        console.log(`[DeriverseService] Timeline: first=${new Date(firstTradeTime * 1000).toISOString()}, last=${new Date(lastTradeTime * 1000).toISOString()}, count=${tradeCount}`);
       }
     } catch (historyErr) {
       if (historyErr instanceof DOMException && historyErr.name === 'AbortError') {
@@ -535,7 +557,37 @@ export class DeriverseService {
       }
     }
     
-    return closedTrades;
+    const timeline = tradeCount > 0 ? {
+      firstTradeTime: firstTradeTime === Infinity ? 0 : firstTradeTime,
+      lastTradeTime,
+      tradeCount,
+    } : null;
+    
+    return { trades: closedTrades, timeline };
+  }
+
+  /**
+   * Fetch historical SOL prices at specific timestamps
+   * Used to estimate entry/exit prices for closed positions
+   */
+  async fetchHistoricalPrices(fromTimestamp: number, toTimestamp: number): Promise<{
+    entryPrice: number;
+    exitPrice: number;
+  }> {
+    try {
+      const response = await fetch(
+        `${API_BASE}?action=historicalPrice&from=${fromTimestamp}&to=${toTimestamp}`
+      );
+      if (response.ok) {
+        const data = await response.json();
+        if (data.entryPrice > 0 && data.exitPrice > 0) {
+          return { entryPrice: data.entryPrice, exitPrice: data.exitPrice };
+        }
+      }
+    } catch (error) {
+      console.warn("[DeriverseService] Historical price fetch failed:", error);
+    }
+    return { entryPrice: 0, exitPrice: 0 };
   }
 
   /**
