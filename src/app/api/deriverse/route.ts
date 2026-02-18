@@ -931,17 +931,31 @@ export async function GET(request: NextRequest) {
       }
 
       case "tradeTimeline": {
-        // FAST: Just get transaction signature metadata (with blockTime) 
-        // without parsing individual transactions. Used to get first/last trade timestamps.
+        // FAST: Get transaction signature metadata (with blockTime) for the Deriverse
+        // client PDA account - this naturally filters to only Deriverse transactions.
         if (!walletAddress) {
           return NextResponse.json({ error: "Missing wallet address" }, { status: 400 });
         }
 
         try {
+          const programId = new PublicKey(DERIVERSE_CONFIG.PROGRAM_ID);
           const walletPubkey = new PublicKey(walletAddress);
           
+          // Derive the client PDA - same logic as findClientAccountsDirect
+          const tagBuf = Buffer.alloc(8);
+          tagBuf.writeUInt32LE(DERIVERSE_CONFIG.VERSION, 0);
+          tagBuf.writeUInt32LE(CLIENT_PRIMARY_TAG, 4);
+          
+          const [clientPda] = PublicKey.findProgramAddressSync(
+            [tagBuf, walletPubkey.toBuffer()],
+            programId
+          );
+          
+          console.log(`[DeriverseAPI] Timeline: Querying client PDA ${clientPda.toBase58()} instead of wallet`);
+          
+          // Query signatures for the client PDA - only Deriverse txs touch this account
           const signatures = await web3Connection.getSignaturesForAddress(
-            walletPubkey,
+            clientPda,
             { limit: 100 },
             "confirmed"
           );
@@ -957,7 +971,7 @@ export async function GET(request: NextRequest) {
           const lastTradeTime = withTimestamps[0].blockTime!;
           const firstTradeTime = withTimestamps[withTimestamps.length - 1].blockTime!;
           
-          console.log(`[DeriverseAPI] Timeline: ${withTimestamps.length} txs, first=${new Date(firstTradeTime * 1000).toISOString()}, last=${new Date(lastTradeTime * 1000).toISOString()}`);
+          console.log(`[DeriverseAPI] Timeline: ${withTimestamps.length} Deriverse txs, first=${new Date(firstTradeTime * 1000).toISOString()}, last=${new Date(lastTradeTime * 1000).toISOString()}`);
           
           return NextResponse.json({
             firstTradeTime,
