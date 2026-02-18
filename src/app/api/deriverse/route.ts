@@ -930,6 +930,46 @@ export async function GET(request: NextRequest) {
         }
       }
 
+      case "tradeTimeline": {
+        // FAST: Just get transaction signature metadata (with blockTime) 
+        // without parsing individual transactions. Used to get first/last trade timestamps.
+        if (!walletAddress) {
+          return NextResponse.json({ error: "Missing wallet address" }, { status: 400 });
+        }
+
+        try {
+          const walletPubkey = new PublicKey(walletAddress);
+          
+          const signatures = await web3Connection.getSignaturesForAddress(
+            walletPubkey,
+            { limit: 100 },
+            "confirmed"
+          );
+          
+          // Filter to only include signatures with valid timestamps
+          const withTimestamps = signatures.filter(s => s.blockTime && s.blockTime > 0);
+          
+          if (withTimestamps.length === 0) {
+            return NextResponse.json({ firstTradeTime: 0, lastTradeTime: 0, totalTxs: 0 });
+          }
+          
+          // Signatures come in reverse chronological order (newest first)
+          const lastTradeTime = withTimestamps[0].blockTime!;
+          const firstTradeTime = withTimestamps[withTimestamps.length - 1].blockTime!;
+          
+          console.log(`[DeriverseAPI] Timeline: ${withTimestamps.length} txs, first=${new Date(firstTradeTime * 1000).toISOString()}, last=${new Date(lastTradeTime * 1000).toISOString()}`);
+          
+          return NextResponse.json({
+            firstTradeTime,
+            lastTradeTime,
+            totalTxs: withTimestamps.length,
+          });
+        } catch (error) {
+          console.warn("[DeriverseAPI] Timeline fetch failed:", error);
+          return NextResponse.json({ firstTradeTime: 0, lastTradeTime: 0, totalTxs: 0 });
+        }
+      }
+
       default:
         return NextResponse.json({ error: "Unknown action" }, { status: 400 });
     }

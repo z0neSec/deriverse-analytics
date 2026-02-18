@@ -355,13 +355,65 @@ export class DeriverseService {
           const totalFees = (position.fees || 0) - (position.rebates || 0) + (position.fundingFunds || 0);
           const leverage = position.leverage || 1;
           
-          // Estimate position size from SDK margin data so volume isn't $0 on initial render
-          // Initial margin ≈ remaining funds + |realized PnL| + fees paid
-          const initialMargin = Math.abs(position.funds) + Math.abs(realizedPnl) + Math.abs(position.fees);
-          const notionalValue = initialMargin * leverage;
-          const estimatedSize = currentPrice > 0 ? notionalValue / currentPrice : 0;
+          // Fetch trade timeline + historical prices NOW (in Phase 1) to avoid data flash
+          // tradeTimeline is fast (~1-2s) - just gets signature metadata without parsing txs
+          let entryPrice = currentPrice;
+          let exitPrice = currentPrice;
+          let entryTime = new Date();
+          let exitTime = new Date();
+          let inferredSide: "long" | "short" = "short";
+          let estimatedSize = 0;
           
-          // Estimate PnL percentage from notional value
+          try {
+            // Step 1: Get trade timeline (fast - just signature list)
+            const timelineRes = await fetch(
+              `${API_BASE}?action=tradeTimeline&wallet=${this.walletAddress}`
+            );
+            if (timelineRes.ok) {
+              const timeline = await timelineRes.json();
+              
+              if (timeline.firstTradeTime > 0 && timeline.lastTradeTime > 0) {
+                entryTime = new Date(timeline.firstTradeTime * 1000);
+                exitTime = new Date(timeline.lastTradeTime * 1000);
+                
+                // Step 2: Get historical prices at those timestamps (fast - CoinGecko API)
+                const histPrices = await this.fetchHistoricalPrices(
+                  timeline.firstTradeTime,
+                  timeline.lastTradeTime
+                );
+                
+                if (histPrices.entryPrice > 0 && histPrices.exitPrice > 0) {
+                  entryPrice = histPrices.entryPrice;
+                  exitPrice = histPrices.exitPrice;
+                  
+                  // Infer side from PnL direction + price movement
+                  const priceWentUp = exitPrice > entryPrice;
+                  const isProfit = realizedPnl > 0;
+                  inferredSide = (priceWentUp === isProfit) ? "long" : "short";
+                  
+                  // Calculate size from PnL and price difference
+                  const priceDiff = inferredSide === "short"
+                    ? entryPrice - exitPrice
+                    : exitPrice - entryPrice;
+                  
+                  if (Math.abs(priceDiff) > 0.01) {
+                    estimatedSize = Math.abs(realizedPnl / priceDiff);
+                  }
+                }
+              }
+            }
+          } catch (err) {
+            console.warn("[DeriverseService] Timeline/price fetch failed, using fallback:", err);
+          }
+          
+          // Fallback: estimate size from SDK margin data if historical prices didn't work
+          if (estimatedSize === 0) {
+            const initialMargin = Math.abs(position.funds) + Math.abs(realizedPnl) + Math.abs(position.fees);
+            const notionalValue = initialMargin * leverage;
+            estimatedSize = currentPrice > 0 ? notionalValue / currentPrice : 0;
+          }
+          
+          const notionalValue = entryPrice * estimatedSize;
           const pnlPct = notionalValue > 0 ? (realizedPnl / notionalValue) * 100 : 0;
           
           trades.push({
@@ -369,16 +421,16 @@ export class DeriverseService {
             txSignature: `perp-${perpPos.instrId}-realized`,
             symbol,
             marketType: "perpetual",
-            side: "short", // Will be refined by historical price data in Phase 2
+            side: inferredSide,
             orderType: "market",
             status: "closed",
-            entryPrice: currentPrice, 
-            currentPrice,
-            exitPrice: currentPrice,
-            quantity: estimatedSize, // Estimated from margin; refined in Phase 2
+            entryPrice,
+            currentPrice: exitPrice,
+            exitPrice,
+            quantity: estimatedSize,
             leverage,
-            entryTime: new Date(),
-            exitTime: new Date(),
+            entryTime,
+            exitTime,
             pnl: realizedPnl,
             pnlPercentage: pnlPct,
             fees: {
@@ -389,7 +441,7 @@ export class DeriverseService {
             },
           });
           
-          console.log(`[DeriverseService] Closed perp position for ${symbol}: PnL=${realizedPnl}, Fees=${totalFees}, Leverage=${leverage}, EstSize=${estimatedSize.toFixed(4)}, Notional=$${notionalValue.toFixed(2)}`);
+          console.log(`[DeriverseService] Closed perp position for ${symbol}: PnL=${realizedPnl}, Side=${inferredSide}, Entry=$${entryPrice.toFixed(2)}, Exit=$${exitPrice.toFixed(2)}, Size=${estimatedSize.toFixed(4)}, Leverage=${leverage}x`);
         }
 
         // Add open orders as pending trades
