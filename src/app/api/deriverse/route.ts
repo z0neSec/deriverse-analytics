@@ -933,6 +933,7 @@ export async function GET(request: NextRequest) {
       case "tradeTimeline": {
         // FAST: Get transaction signature metadata (with blockTime) for the Deriverse
         // client PDA account - this naturally filters to only Deriverse transactions.
+        // Returns ALL individual timestamps so the client can separate old vs new trades.
         if (!walletAddress) {
           return NextResponse.json({ error: "Missing wallet address" }, { status: 400 });
         }
@@ -951,12 +952,10 @@ export async function GET(request: NextRequest) {
             programId
           );
           
-          console.log(`[DeriverseAPI] Timeline: Querying client PDA ${clientPda.toBase58()} instead of wallet`);
-          
           // Query signatures for the client PDA - only Deriverse txs touch this account
           const signatures = await web3Connection.getSignaturesForAddress(
             clientPda,
-            { limit: 100 },
+            { limit: 200 },
             "confirmed"
           );
           
@@ -964,23 +963,26 @@ export async function GET(request: NextRequest) {
           const withTimestamps = signatures.filter(s => s.blockTime && s.blockTime > 0);
           
           if (withTimestamps.length === 0) {
-            return NextResponse.json({ firstTradeTime: 0, lastTradeTime: 0, totalTxs: 0 });
+            return NextResponse.json({ firstTradeTime: 0, lastTradeTime: 0, totalTxs: 0, timestamps: [] });
           }
           
           // Signatures come in reverse chronological order (newest first)
-          const lastTradeTime = withTimestamps[0].blockTime!;
-          const firstTradeTime = withTimestamps[withTimestamps.length - 1].blockTime!;
+          // Return all timestamps in chronological order (oldest first)
+          const allTimestamps = withTimestamps.map(s => s.blockTime!).reverse();
+          const firstTradeTime = allTimestamps[0];
+          const lastTradeTime = allTimestamps[allTimestamps.length - 1];
           
-          console.log(`[DeriverseAPI] Timeline: ${withTimestamps.length} Deriverse txs, first=${new Date(firstTradeTime * 1000).toISOString()}, last=${new Date(lastTradeTime * 1000).toISOString()}`);
+          console.log(`[DeriverseAPI] Timeline: ${allTimestamps.length} Deriverse txs, first=${new Date(firstTradeTime * 1000).toISOString()}, last=${new Date(lastTradeTime * 1000).toISOString()}`);
           
           return NextResponse.json({
             firstTradeTime,
             lastTradeTime,
-            totalTxs: withTimestamps.length,
+            totalTxs: allTimestamps.length,
+            timestamps: allTimestamps,
           });
         } catch (error) {
           console.warn("[DeriverseAPI] Timeline fetch failed:", error);
-          return NextResponse.json({ firstTradeTime: 0, lastTradeTime: 0, totalTxs: 0 });
+          return NextResponse.json({ firstTradeTime: 0, lastTradeTime: 0, totalTxs: 0, timestamps: [] });
         }
       }
 

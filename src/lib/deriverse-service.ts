@@ -315,16 +315,44 @@ export class DeriverseService {
         const currentPrice = priceData?.midPrice || priceData?.lastPrice || 0;
         const position = ordersData.position;
 
+        // Fetch trade timeline once - used for both open and closed trade display
+        let timeline: { firstTradeTime: number; lastTradeTime: number; totalTxs: number; timestamps: number[] } | null = null;
+        
+        if (position && (position.perps !== 0 || position.result !== 0 || position.fees !== 0)) {
+          try {
+            const timelineRes = await fetch(
+              `${API_BASE}?action=tradeTimeline&wallet=${this.walletAddress}`
+            );
+            if (timelineRes.ok) {
+              timeline = await timelineRes.json();
+            }
+          } catch (err) {
+            console.warn("[DeriverseService] Timeline fetch failed:", err);
+          }
+        }
+
         // If there's an active perp position (perps != 0), create a trade for it
         if (position && position.perps !== 0) {
           const isLong = position.perps > 0;
           const size = Math.abs(position.perps);
           const entryPrice = position.cost !== 0 ? Math.abs(position.cost / position.perps) : currentPrice;
           
-          // Use the SDK's actual PnL (result field) instead of calculating it ourselves
-          // The SDK's result is already accurate and includes all factors
-          const unrealizedPnl = position.result || 0;
-
+          // Calculate ACTUAL unrealized PnL from price difference
+          // result is cumulative REALIZED PnL from all past trades, not unrealized
+          const unrealizedPnl = currentPrice * position.perps - position.cost;
+          
+          // Figure out entry time from timeline (last tx is most recent = current position entry)
+          let entryTime = new Date();
+          if (timeline && timeline.timestamps && timeline.timestamps.length > 0) {
+            // The latest timestamp is the current position's entry
+            entryTime = new Date(timeline.timestamps[timeline.timestamps.length - 1] * 1000);
+          }
+          
+          // Estimate current position's fees from total cost basis
+          // New position fee ≈ |cost| × fee_rate (typically ~0.05%)
+          const estimatedNewFees = Math.abs(position.cost) * 0.0005;
+          const currentFees = Math.min(estimatedNewFees * 1.5, position.fees); // cap at total fees
+          
           trades.push({
             id: `perp-pos-${tradeId++}`,
             txSignature: `perp-${perpPos.instrId}-position`,
@@ -337,16 +365,104 @@ export class DeriverseService {
             currentPrice,
             quantity: size,
             leverage: position.leverage || 1,
-            entryTime: new Date(),
+            entryTime,
             pnl: unrealizedPnl,
             pnlPercentage: entryPrice > 0 && size > 0 ? (unrealizedPnl / (entryPrice * size)) * 100 : 0,
             fees: {
-              makerFee: position.fees - position.rebates,
+              makerFee: currentFees,
               takerFee: 0,
-              fundingFee: position.fundingFunds,
-              totalFee: position.fees - position.rebates + position.fundingFunds,
+              fundingFee: 0,
+              totalFee: currentFees,
             },
           });
+          
+          console.log(`[DeriverseService] Open perp position for ${symbol}: Side=${isLong ? 'long' : 'short'}, Entry=$${entryPrice.toFixed(2)}, Size=${size}, UnrealizedPnL=${unrealizedPnl.toFixed(4)}, Leverage=${position.leverage}x`);
+          
+          // ALSO show old closed trade(s) if there's realized PnL from previous positions
+          if (position.result !== 0) {
+            const realizedPnl = position.result;
+            const leverage = position.leverage || 1;
+            
+            let oldEntryPrice = currentPrice;
+            let oldExitPrice = currentPrice;
+            let oldEntryTime = new Date();
+            let oldExitTime = new Date();
+            let inferredSide: "long" | "short" = "short";
+            let estimatedSize = 0;
+            
+            // Use timeline to find old trade's time range
+            // All timestamps before the last one belong to the old trade
+            if (timeline && timeline.timestamps && timeline.timestamps.length > 1) {
+              const oldTimestamps = timeline.timestamps.slice(0, -1); // all but the newest
+              oldEntryTime = new Date(oldTimestamps[0] * 1000);
+              oldExitTime = new Date(oldTimestamps[oldTimestamps.length - 1] * 1000);
+              
+              try {
+                const histPrices = await this.fetchHistoricalPrices(
+                  oldTimestamps[0],
+                  oldTimestamps[oldTimestamps.length - 1]
+                );
+                
+                if (histPrices.entryPrice > 0 && histPrices.exitPrice > 0) {
+                  oldEntryPrice = histPrices.entryPrice;
+                  oldExitPrice = histPrices.exitPrice;
+                  
+                  const priceWentUp = oldExitPrice > oldEntryPrice;
+                  const isProfit = realizedPnl > 0;
+                  inferredSide = (priceWentUp === isProfit) ? "long" : "short";
+                  
+                  const priceDiff = inferredSide === "short"
+                    ? oldEntryPrice - oldExitPrice
+                    : oldExitPrice - oldEntryPrice;
+                  
+                  if (Math.abs(priceDiff) > 0.01) {
+                    estimatedSize = Math.abs(realizedPnl / priceDiff);
+                  }
+                }
+              } catch (err) {
+                console.warn("[DeriverseService] Historical price fetch for old trade failed:", err);
+              }
+            }
+            
+            // Fallback: estimate from margin data
+            if (estimatedSize === 0) {
+              estimatedSize = currentPrice > 0 ? Math.abs(realizedPnl * leverage) / currentPrice : 0;
+            }
+            
+            // Old trade fees = total fees - estimated new trade fees
+            const oldFees = Math.max(0, position.fees - estimatedNewFees);
+            const oldTotalFees = oldFees - position.rebates + position.fundingFunds;
+            
+            const notionalValue = oldEntryPrice * estimatedSize;
+            const pnlPct = notionalValue > 0 ? (realizedPnl / notionalValue) * 100 : 0;
+            
+            trades.push({
+              id: `perp-realized-${tradeId++}`,
+              txSignature: `perp-${perpPos.instrId}-realized`,
+              symbol,
+              marketType: "perpetual",
+              side: inferredSide,
+              orderType: "market",
+              status: "closed",
+              entryPrice: oldEntryPrice,
+              currentPrice: oldExitPrice,
+              exitPrice: oldExitPrice,
+              quantity: estimatedSize,
+              leverage,
+              entryTime: oldEntryTime,
+              exitTime: oldExitTime,
+              pnl: realizedPnl,
+              pnlPercentage: pnlPct,
+              fees: {
+                makerFee: oldFees,
+                takerFee: 0,
+                fundingFee: position.fundingFunds,
+                totalFee: oldTotalFees,
+              },
+            });
+            
+            console.log(`[DeriverseService] Old closed trade for ${symbol}: PnL=${realizedPnl}, Side=${inferredSide}, Entry=$${oldEntryPrice.toFixed(2)}, Exit=$${oldExitPrice.toFixed(2)}, Size=${estimatedSize.toFixed(4)}`);
+          }
         }
         // If position is closed (perps === 0) but has a realized result, create a closed trade
         // This captures the SDK's accurate PnL for positions that were closed
@@ -355,8 +471,6 @@ export class DeriverseService {
           const totalFees = (position.fees || 0) - (position.rebates || 0) + (position.fundingFunds || 0);
           const leverage = position.leverage || 1;
           
-          // Fetch trade timeline + historical prices NOW (in Phase 1) to avoid data flash
-          // tradeTimeline is fast (~1-2s) - just gets signature metadata without parsing txs
           let entryPrice = currentPrice;
           let exitPrice = currentPrice;
           let entryTime = new Date();
@@ -364,46 +478,35 @@ export class DeriverseService {
           let inferredSide: "long" | "short" = "short";
           let estimatedSize = 0;
           
-          try {
-            // Step 1: Get trade timeline (fast - just signature list)
-            const timelineRes = await fetch(
-              `${API_BASE}?action=tradeTimeline&wallet=${this.walletAddress}`
-            );
-            if (timelineRes.ok) {
-              const timeline = await timelineRes.json();
+          if (timeline && timeline.firstTradeTime > 0 && timeline.lastTradeTime > 0) {
+            entryTime = new Date(timeline.firstTradeTime * 1000);
+            exitTime = new Date(timeline.lastTradeTime * 1000);
+            
+            try {
+              const histPrices = await this.fetchHistoricalPrices(
+                timeline.firstTradeTime,
+                timeline.lastTradeTime
+              );
               
-              if (timeline.firstTradeTime > 0 && timeline.lastTradeTime > 0) {
-                entryTime = new Date(timeline.firstTradeTime * 1000);
-                exitTime = new Date(timeline.lastTradeTime * 1000);
+              if (histPrices.entryPrice > 0 && histPrices.exitPrice > 0) {
+                entryPrice = histPrices.entryPrice;
+                exitPrice = histPrices.exitPrice;
                 
-                // Step 2: Get historical prices at those timestamps (fast - CoinGecko API)
-                const histPrices = await this.fetchHistoricalPrices(
-                  timeline.firstTradeTime,
-                  timeline.lastTradeTime
-                );
+                const priceWentUp = exitPrice > entryPrice;
+                const isProfit = realizedPnl > 0;
+                inferredSide = (priceWentUp === isProfit) ? "long" : "short";
                 
-                if (histPrices.entryPrice > 0 && histPrices.exitPrice > 0) {
-                  entryPrice = histPrices.entryPrice;
-                  exitPrice = histPrices.exitPrice;
-                  
-                  // Infer side from PnL direction + price movement
-                  const priceWentUp = exitPrice > entryPrice;
-                  const isProfit = realizedPnl > 0;
-                  inferredSide = (priceWentUp === isProfit) ? "long" : "short";
-                  
-                  // Calculate size from PnL and price difference
-                  const priceDiff = inferredSide === "short"
-                    ? entryPrice - exitPrice
-                    : exitPrice - entryPrice;
-                  
-                  if (Math.abs(priceDiff) > 0.01) {
-                    estimatedSize = Math.abs(realizedPnl / priceDiff);
-                  }
+                const priceDiff = inferredSide === "short"
+                  ? entryPrice - exitPrice
+                  : exitPrice - entryPrice;
+                
+                if (Math.abs(priceDiff) > 0.01) {
+                  estimatedSize = Math.abs(realizedPnl / priceDiff);
                 }
               }
+            } catch (err) {
+              console.warn("[DeriverseService] Historical price fetch failed:", err);
             }
-          } catch (err) {
-            console.warn("[DeriverseService] Timeline/price fetch failed, using fallback:", err);
           }
           
           // Fallback: estimate size from SDK margin data if historical prices didn't work
@@ -689,8 +792,9 @@ export class DeriverseService {
           const size = Math.abs(position.perps);
           const entryPrice = position.cost !== 0 ? Math.abs(position.cost / position.perps) : currentPrice;
           
-          // Use SDK's actual PnL (result field) - this is accurate
-          const unrealizedPnl = position.result || 0;
+          // Calculate ACTUAL unrealized PnL from price difference
+          // result is cumulative REALIZED PnL from all past trades, not unrealized
+          const unrealizedPnl = currentPrice * position.perps - position.cost;
 
           positions.push({
             id: `perp-${perpPos.instrId}`,
