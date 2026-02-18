@@ -181,8 +181,17 @@ Configure your dashboard preferences and wallet settings.
                    ┌───────────────────────┐
                    │   SDK Data Parsing    │
                    │  - Position Data      │
-                   │  - Real PnL (result)  │
+                   │  - Realized PnL       │
+                   │  - Unrealized PnL     │
                    │  - Leverage, Fees     │
+                   └───────────────────────┘
+                                │
+                                ▼
+                   ┌───────────────────────┐
+                   │  Historical Prices    │
+                   │  - CoinGecko Range    │
+                   │  - Client PDA Sigs    │
+                   │  - Entry/Exit Prices  │
                    └───────────────────────┘
 ```
 
@@ -190,15 +199,17 @@ Configure your dashboard preferences and wallet settings.
 
 The app uses the Deriverse SDK for accurate real-time data:
 
-1. **Positions**: SDK provides `perps`, `cost`, `result` (PnL), `leverage`, `fees`
-2. **Prices**: CoinGecko API for live market prices
+1. **Positions**: SDK provides `perps`, `cost`, `result` (realized PnL), `leverage`, `fees`
+2. **Prices**: CoinGecko API for live market prices + historical price ranges
 3. **Account Data**: SDK client data for balances and trade counts
+4. **Trade Timeline**: Client PDA signature queries for transaction timestamps
 
 ```typescript
-// Example: Using SDK's accurate PnL
-const position = ordersData.position;
-const unrealizedPnl = position.result; // Actual PnL from SDK
-const leverage = position.leverage;    // Real leverage used
+// Unrealized PnL calculated from current price vs cost basis
+const unrealizedPnl = currentPrice * position.perps - position.cost;
+// Realized PnL from SDK (cumulative across past closed trades)
+const realizedPnl = position.result;
+const leverage = position.leverage;
 ```
 
 ---
@@ -325,9 +336,13 @@ This dashboard is built for [Deriverse](https://deriverse.gitbook.io/deriverse-v
 ### Supported Features
 - ✅ Wallet connection via Solana Wallet Adapter
 - ✅ Real position data from Deriverse SDK
-- ✅ Accurate PnL tracking (SDK's result field)
+- ✅ Unrealized PnL from live price vs cost basis
+- ✅ Realized PnL from SDK's cumulative result field
+- ✅ Historical entry/exit prices via CoinGecko range API
+- ✅ Trade timeline via client PDA signature queries
 - ✅ Live price feeds from CoinGecko
 - ✅ Real leverage and fee data from SDK
+- ✅ Both open and closed trades displayed simultaneously
 
 ---
 
@@ -394,8 +409,11 @@ This project was built for the **Deriverse Hackathon** with the goal of creating
 
 ### Technical Achievements
 
-- **Accurate SDK Data** - Uses SDK's real PnL, leverage, and fees
-- **CoinGecko Integration** - Live market prices
+- **Accurate SDK Data** - Uses SDK's real leverage, fees, and realized PnL
+- **Unrealized PnL** - Calculated from live price × perps − cost basis
+- **Historical Price Estimation** - CoinGecko range API for closed trade entry/exit prices
+- **Client PDA Timeline** - Queries Deriverse account signatures for trade timestamps
+- **CoinGecko Integration** - Live market prices + historical ranges
 - **Real-time Updates** - 30-second PnL refresh cycle
 - **Type-Safe** - Full TypeScript coverage
 
