@@ -411,7 +411,7 @@ This project was built for the **Deriverse Hackathon** with the goal of creating
 
 - **Accurate SDK Data** - Uses SDK's real leverage, fees, and realized PnL
 - **Unrealized PnL** - Calculated from live price × perps − cost basis
-- **Historical Price Estimation** - CoinGecko range API for closed trade entry/exit prices
+- **Historical Price Estimation** - CoinGecko range API for closed trade entry/exit price
 - **Client PDA Timeline** - Queries Deriverse account signatures for trade timestamps
 - **CoinGecko Integration** - Live market prices + historical ranges
 - **Real-time Updates** - 30-second PnL refresh cycle
